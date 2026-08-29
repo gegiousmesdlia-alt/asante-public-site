@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Listings — Asante & Grove</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Listings</a>
+      <a href="agents.html">Agents</a>
+      <a href="contact.html">Contact</a>
+      <span id="auth-slot" style="display:contents"></span>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<section style="padding-bottom:0;">
+  <div class="wrap">
+    <span class="eyebrow">Full registry</span>
+    <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-top:10px;">Every plot on the books</h1>
+
+    <form class="search-bar" id="search-form" style="margin-top:28px; grid-template-columns: 1fr 160px 160px auto;">
+      <input type="text" id="q" placeholder="Search by area…">
+      <select id="type">
+        <option value="all">Sale or rent</option>
+        <option value="sale">For sale</option>
+        <option value="rent">For rent</option>
+      </select>
+      <select id="location"><option value="all">All areas</option></select>
+      <button type="submit">Filter</button>
+    </form>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="filter-bar" id="quick-filters">
+      <button class="chip active" data-type="all">All</button>
+      <button class="chip" data-type="sale">For sale</button>
+      <button class="chip" data-type="rent">For rent</button>
+    </div>
+    <div class="grid" id="listings-grid">
+      <div class="empty-state">Loading listings…</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-bottom">
+    <span>© <span data-year></span> Asante &amp; Grove Real Estate</span>
+    <a href="index.html">Back to home</a>
+  </div>
+</footer>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/main.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module">
+  import { fetchListings, applyFilters, renderList } from "./js/listings.js";
+
+  const grid = document.getElementById("listings-grid");
+  const params = new URLSearchParams(location.search);
+  let all = [];
+  let state = { type: params.get("type") || "all", location: "all", q: params.get("q") || "" };
+
+  function apply() {
+    renderList(grid, applyFilters(all, state));
+    document.querySelectorAll("#quick-filters .chip").forEach(c => c.classList.toggle("active", c.dataset.type === state.type));
+  }
+
+  try {
+    all = await fetchListings();
+    const locSelect = document.getElementById("location");
+    [...new Set(all.map(l => l.location).filter(Boolean))].forEach(loc => {
+      const opt = document.createElement("option");
+      opt.value = loc; opt.textContent = loc;
+      locSelect.appendChild(opt);
+    });
+    document.getElementById("q").value = state.q;
+    document.getElementById("type").value = state.type;
+    apply();
+  } catch (e) {
+    grid.innerHTML = `<div class="empty-state">Listings will appear here once your Firebase project is connected and the "listings" collection has documents.</div>`;
+  }
+
+  document.getElementById("quick-filters").addEventListener("click", e => {
+    if (!e.target.dataset.type) return;
+    state.type = e.target.dataset.type;
+    document.getElementById("type").value = state.type;
+    apply();
+  });
+
+  document.getElementById("search-form").addEventListener("submit", e => {
+    e.preventDefault();
+    state.q = document.getElementById("q").value;
+    state.type = document.getElementById("type").value;
+    state.location = document.getElementById("location").value;
+    apply();
+  });
+</script>
+</body>
+</html>

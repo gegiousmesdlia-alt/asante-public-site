@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agents — Asante & Grove</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Listings</a>
+      <a href="agents.html">Agents</a>
+      <a href="contact.html">Contact</a>
+      <span id="auth-slot" style="display:contents"></span>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<section style="padding-bottom:0;">
+  <div class="wrap">
+    <span class="eyebrow">The team</span>
+    <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-top:10px;">Agents on record</h1>
+    <p style="color:var(--ink-soft); max-width:50ch; margin-top:14px;">Every listing is assigned a named agent who handles viewings and closing. Reach any of them directly.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="grid" id="agents-grid">
+      <div class="empty-state">Loading agents…</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-bottom">
+    <span>© <span data-year></span> Asante &amp; Grove Real Estate</span>
+    <a href="index.html">Back to home</a>
+  </div>
+</footer>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/main.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module">
+  import { db } from "./js/firebase-config.js";
+  import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const grid = document.getElementById("agents-grid");
+  try {
+    const snap = await getDocs(collection(db, "agents"));
+    const agents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!agents.length) throw new Error("empty");
+    grid.innerHTML = agents.map(a => `
+      <div class="agent-card">
+        <div class="photo"><img src="${a.photo || 'https://placehold.co/200x200/D9CDB2/14171C?text=' + (a.name?.[0] || 'A')}" alt="${a.name}"></div>
+        <h3 style="text-transform:none; font-family:var(--font-body);">${a.name}</h3>
+        <span class="role">${a.role || "Agent"}</span>
+        <p style="font-size:0.86rem; color:var(--ink-soft); margin-top:10px;">${a.bio || ""}</p>
+        <a class="text-link" style="display:inline-block; margin-top:12px;" href="mailto:${a.email || ''}">${a.email || 'Contact via office'}</a>
+      </div>
+    `).join("");
+  } catch {
+    grid.innerHTML = `<div class="empty-state">Agent profiles will appear here once added via the admin panel's "agents" collection.</div>`;
+  }
+</script>
+</body>
+</html>

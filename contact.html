@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — Asante & Grove</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Listings</a>
+      <a href="agents.html">Agents</a>
+      <a href="contact.html">Contact</a>
+      <span id="auth-slot" style="display:contents"></span>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<section>
+  <div class="wrap two-col">
+    <div>
+      <span class="eyebrow">Get in touch</span>
+      <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-top:10px;">Talk to the office</h1>
+      <p style="color:var(--ink-soft); margin-top:16px; max-width:44ch;">For general enquiries, partnership requests, or to list a property with us, send a note and an agent will follow up within one business day.</p>
+
+      <div class="ledger-card mt-lg">
+        <div class="row"><span>Office</span><span>Central Business District</span></div>
+        <div class="row"><span>Hours</span><span>Mon–Sat, 9:00–18:00</span></div>
+        <div class="row"><span>Email</span><span>hello@asanteandgrove.example</span></div>
+      </div>
+    </div>
+
+    <form class="form-card" id="contact-form">
+      <div class="field"><label for="c-name">Full name</label><input id="c-name" required></div>
+      <div class="field"><label for="c-email">Email</label><input id="c-email" type="email" required></div>
+      <div class="field"><label for="c-phone">Phone</label><input id="c-phone"></div>
+      <div class="field"><label for="c-message">Message</label><textarea id="c-message" required></textarea></div>
+      <button class="btn block" type="submit">Send message</button>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-bottom">
+    <span>© <span data-year></span> Asante &amp; Grove Real Estate</span>
+    <a href="index.html">Back to home</a>
+  </div>
+</footer>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/main.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module">
+  import { db } from "./js/firebase-config.js";
+  import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { showToast } from "./js/main.js";
+
+  document.getElementById("contact-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      name: document.getElementById("c-name").value,
+      email: document.getElementById("c-email").value,
+      phone: document.getElementById("c-phone").value,
+      message: document.getElementById("c-message").value,
+      createdAt: serverTimestamp()
+    };
+    try {
+      await addDoc(collection(db, "enquiries"), payload);
+      showToast("Message sent — we'll be in touch.");
+      e.target.reset();
+    } catch {
+      showToast("Could not send right now. Try again shortly.");
+    }
+  });
+</script>
+</body>
+</html>

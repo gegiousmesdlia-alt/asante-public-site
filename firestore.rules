@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+
+    // Public catalogue — anyone can read, only admins can write.
+    match /listings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /agents/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Users manage their own profile/favorites only.
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Anyone can submit an enquiry; only admins can read the inbox.
+    match /enquiries/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Bookings are written only by the server (Admin SDK via webhook),
+    // never directly from client code — so no client write rule exists.
+    match /bookings/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Admin whitelist — never client-writable; add entries from the Firebase console.
+    match /admins/{uid} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+  }
+}

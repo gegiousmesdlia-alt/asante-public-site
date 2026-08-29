@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your saved properties — Asante & Grove</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Listings</a>
+      <a href="agents.html">Agents</a>
+      <a href="contact.html">Contact</a>
+      <span id="auth-slot" style="display:contents"></span>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<section style="padding-bottom:0;">
+  <div class="wrap">
+    <span class="eyebrow">Your account</span>
+    <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-top:10px;">Saved properties</h1>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="grid" id="fav-grid">
+      <div class="empty-state">Sign in to see your saved properties.</div>
+    </div>
+  </div>
+</section>
+
+<footer><div class="wrap foot-bottom"><span>© <span data-year></span> Asante &amp; Grove Real Estate</span></div></footer>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/main.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module">
+  import { auth } from "./js/firebase-config.js";
+  import { watchAuth } from "./js/auth.js";
+  import { getFavorites } from "./js/favorites.js";
+  import { fetchListing, cardHTML } from "./js/listings.js";
+
+  const grid = document.getElementById("fav-grid");
+  watchAuth(async (user) => {
+    if (!user) { grid.innerHTML = `<div class="empty-state">Sign in to see your saved properties. <a class="text-link" href="login.html">Sign in →</a></div>`; return; }
+    grid.innerHTML = `<div class="empty-state">Loading your saved properties…</div>`;
+    try {
+      const ids = await getFavorites(user.uid);
+      if (!ids.length) { grid.innerHTML = `<div class="empty-state">No saved properties yet. <a class="text-link" href="listings.html">Browse listings →</a></div>`; return; }
+      const listings = (await Promise.all(ids.map(fetchListing))).filter(Boolean);
+      grid.innerHTML = listings.map(cardHTML).join("");
+    } catch {
+      grid.innerHTML = `<div class="empty-state">Could not load your saved properties right now.</div>`;
+    }
+  });
+</script>
+</body>
+</html>
