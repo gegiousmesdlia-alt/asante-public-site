@@ -194,15 +194,23 @@
     }
   });
 
-  // Auto-detect the visitor's city on load — trusted source (Vercel geo,
-  // not typed text), so it can run both searches immediately.
-  const geo = await fetchVisitorLocation();
-  if (geo?.city && !state.q) {
-    const label = locationLabel(geo);
-    qInput.value = label;
-    state.q = label;
-    applyOwn();
-    runNationwide(label, state.type === "rent" ? "rent" : "sale");
+  // If a location came in via URL (i.e. someone searched from the homepage
+  // hero), trust it enough to run the nationwide search directly on load —
+  // no suggestion-pick required for that entry point, only for someone
+  // typing fresh into this page's own search box.
+  if (state.q) {
+    runNationwide(state.q, state.type === "rent" ? "rent" : "sale");
+  } else {
+    // Otherwise auto-detect the visitor's city — also a trusted source
+    // (Vercel geo, not typed text).
+    const geo = await fetchVisitorLocation();
+    if (geo?.city) {
+      const label = locationLabel(geo);
+      qInput.value = label;
+      state.q = label;
+      applyOwn();
+      runNationwide(label, state.type === "rent" ? "rent" : "sale");
+    }
   }
 </script>
 </body>

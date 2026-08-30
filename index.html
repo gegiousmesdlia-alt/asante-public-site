@@ -65,6 +65,22 @@
   </div>
 </section>
 
+<section style="background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line);" id="nationwide-teaser-section">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Live nationwide</span>
+        <h2 id="nw-teaser-heading" style="font-size:1.8rem;">More properties to browse</h2>
+      </div>
+      <a class="text-link" id="nw-teaser-link" href="listings.html">See more →</a>
+    </div>
+    <p id="nw-teaser-status" style="font-family:var(--font-mono); font-size:0.8rem; color:var(--ink-soft); margin:-10px 0 20px;"></p>
+    <div class="grid" id="nw-teaser-grid">
+      <div class="empty-state">Loading nationwide listings…</div>
+    </div>
+  </div>
+</section>
+
 <section style="background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
   <div class="wrap two-col">
     <div>
@@ -145,6 +161,7 @@
   import { fetchApprovedReviews, reviewCardHTML, ratingSummary } from "./js/reviews.js";
   import { fetchDiscountPercent } from "./js/pricing.js";
   import { fetchVisitorLocation, locationLabel } from "./js/geo.js";
+  import { fetchExternalListings, renderExternalListings } from "./js/external-listings.js";
 
   const grid = document.getElementById("featured-grid");
   let all = [];
@@ -204,6 +221,45 @@
     if (type !== "all") params.set("type", type);
     location.href = "listings.html?" + params.toString();
   });
+
+  // Nationwide teaser: try the visitor's own detected city first; if that
+  // comes back empty (or location can't be detected — e.g. outside the US,
+  // or running off Vercel), fall back through a short list of major US
+  // cities so this section never sits empty on the homepage.
+  const FALLBACK_CITIES = ["Austin, TX", "Denver, CO", "Miami, FL", "Chicago, IL", "Charlotte, NC"];
+
+  async function loadNationwideTeaser() {
+    const teaserGrid = document.getElementById("nw-teaser-grid");
+    const teaserStatus = document.getElementById("nw-teaser-status");
+    const teaserHeading = document.getElementById("nw-teaser-heading");
+    const teaserLink = document.getElementById("nw-teaser-link");
+
+    const candidates = [];
+    const geo = await fetchVisitorLocation();
+    if (geo?.city) candidates.push({ label: locationLabel(geo), isHome: true });
+    FALLBACK_CITIES.forEach(c => candidates.push({ label: c, isHome: false }));
+
+    for (const candidate of candidates) {
+      try {
+        const data = await fetchExternalListings({ location: candidate.label, type: "sale" });
+        if (data.listings?.length) {
+          const discountPercent = await fetchDiscountPercent();
+          renderExternalListings(teaserGrid, data.listings.slice(0, 3), discountPercent);
+          teaserHeading.textContent = candidate.isHome ? `Near ${candidate.label}` : `Popular in ${candidate.label}`;
+          teaserStatus.textContent = candidate.isHome ? "" : `No live listings found near you yet — showing ${candidate.label} instead.`;
+          teaserLink.href = `listings.html?q=${encodeURIComponent(candidate.label)}`;
+          return;
+        }
+      } catch (e) {
+        console.error(`Nationwide teaser failed for ${candidate.label}:`, e);
+      }
+    }
+    // Every candidate came back empty or failed — hide the section rather
+    // than show a permanently empty one.
+    document.getElementById("nationwide-teaser-section").style.display = "none";
+  }
+
+  loadNationwideTeaser();
 </script>
 </body>
 </html>
