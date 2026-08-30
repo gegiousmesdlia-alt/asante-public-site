@@ -14,7 +14,6 @@
     <nav class="nav-links">
       <a href="index.html">Home</a>
       <a href="listings.html">Listings</a>
-      <a href="marketplace.html">Nationwide Search</a>
       <a href="agents.html">Agents</a>
       <a href="reviews.html">Reviews</a>
       <a href="contact.html">Contact</a>
@@ -64,7 +63,7 @@
   import { showToast } from "./js/main.js";
 
   // Prefill from ?about=... when arriving via "Ask us about this property"
-  // on the nationwide marketplace page.
+  // on the nationwide-listings section of listings.html.
   const aboutParam = new URLSearchParams(location.search).get("about");
   if (aboutParam) {
     document.getElementById("c-message").value = `I'd like more information about this property: ${aboutParam}`;

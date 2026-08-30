@@ -61,7 +61,11 @@ a few listings and agents from the admin panel first.
 
 ## 6. Nationwide live listings (RealtyAPI.io)
 
-`marketplace.html` searches Realtor.com, Redfin, and Apartments.com live via
+`listings.html` is the **single search page** — one search bar drives both
+result sets. It always shows your own Firestore listings ("Our listings").
+When the location field has an actual picked suggestion (not just typed
+text), a second "Nationwide search" section appears below with live results
+from
 [RealtyAPI.io](https://realtyapi.io), separate from your own agency listings
 in Firestore. It's clearly labeled as external data, and every result card
 stays on this site — there's no outbound link to Realtor/Redfin/Apartments;
