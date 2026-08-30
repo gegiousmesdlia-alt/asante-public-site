@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buyer Reviews — Asante & Grove</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Listings</a>
+      <a href="agents.html">Agents</a>
+      <a href="reviews.html" class="active">Reviews</a>
+      <a href="contact.html">Contact</a>
+      <span id="auth-slot" style="display:contents"></span>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<section style="padding-bottom:0;">
+  <div class="wrap">
+    <span class="eyebrow">Verified buyers only</span>
+    <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-top:10px;">What buyers say</h1>
+    <div class="ledger-card" style="max-width:360px; margin-top:24px;" id="rating-summary-card">
+      <div class="row"><span>Loading…</span><span></span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="grid reviews-grid" id="reviews-list">
+      <div class="empty-state">Loading reviews…</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-bottom">
+    <span>© <span data-year></span> Asante &amp; Grove Real Estate</span>
+    <a href="index.html">Back to home</a>
+  </div>
+</footer>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/main.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module">
+  import { fetchApprovedReviews, ratingSummary, renderReviews } from "./js/reviews.js";
+
+  const list = document.getElementById("reviews-list");
+  const summaryCard = document.getElementById("rating-summary-card");
+
+  try {
+    const reviews = await fetchApprovedReviews();
+    const { avg, count } = ratingSummary(reviews);
+    const breakdown = [5,4,3,2,1].map(n => reviews.filter(r => r.rating === n).length);
+
+    summaryCard.innerHTML = `
+      <div class="row"><span>Average rating</span><span>${avg.toFixed(1)} / 5</span></div>
+      <div class="row"><span>Total reviews</span><span>${count}</span></div>
+      ${[5,4,3,2,1].map((n,i) => `<div class="row"><span>${n} star</span><span>${breakdown[i]}</span></div>`).join("")}
+    `;
+
+    renderReviews(list, reviews);
+  } catch {
+    summaryCard.innerHTML = `<div class="row"><span>No reviews yet</span><span></span></div>`;
+    list.innerHTML = `<div class="empty-state">Reviews will appear here once your Firebase project is connected and buyers start leaving them.</div>`;
+  }
+</script>
+</body>
+</html>

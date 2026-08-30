@@ -16,6 +16,7 @@
       <a href="index.html">Home</a>
       <a href="listings.html">Listings</a>
       <a href="agents.html">Agents</a>
+      <a href="reviews.html">Reviews</a>
       <a href="contact.html">Contact</a>
       <span id="auth-slot" style="display:contents"></span>
     </nav>
@@ -23,12 +24,12 @@
   </div>
 </header>
 
-<section class="hero">
-  <div class="wrap hero-grid">
-    <div>
-      <span class="eyebrow">Buy · Rent · Verified Titles</span>
-      <h1>Property, on record.</h1>
-      <p class="hero-copy">Every listing here is verified against its title deed before it goes live. Browse plots, apartments and estates for sale or rent, book a viewing, and settle fees in USD or BTC.</p>
+<section class="hero hero-simple">
+  <div class="wrap">
+    <div class="hero-simple-inner">
+      <span class="eyebrow center-eyebrow">Buy · Rent · Verified Properties</span>
+      <h1>Find a home you can trust.</h1>
+      <p class="hero-copy center-copy">Every listing is checked against its title deed before it goes live. Browse, book a viewing, and pay securely in USD or BTC.</p>
 
       <form class="search-bar" id="hero-search">
         <input type="text" id="q" placeholder="Search by area, e.g. Maitama, Lekki…">
@@ -37,23 +38,13 @@
           <option value="sale">For sale</option>
           <option value="rent">For rent</option>
         </select>
-        <select id="beds">
-          <option value="">Any beds</option>
-          <option value="1">1+ bed</option>
-          <option value="2">2+ beds</option>
-          <option value="3">3+ beds</option>
-          <option value="4">4+ beds</option>
-        </select>
         <button type="submit">Search</button>
       </form>
-    </div>
 
-    <div class="ledger-card">
-      <div class="row"><span>Active listings</span><span id="stat-listings">—</span></div>
-      <div class="row"><span>Verified titles</span><span>100%</span></div>
-      <div class="row"><span>Cities covered</span><span id="stat-cities">—</span></div>
-      <div class="row"><span>Settlement</span><span>USD · BTC</span></div>
-      <div class="row"><span>Avg. response time</span><span>&lt; 2 hrs</span></div>
+      <a class="hero-rating-link" href="reviews.html">
+        <span class="stars" id="hero-stars">★★★★★</span>
+        <span id="hero-rating-summary">Rated by verified buyers</span>
+      </a>
     </div>
   </div>
 </section>
@@ -84,6 +75,21 @@
       <div class="row"><span>01</span><span>Browse &amp; shortlist a property</span></div>
       <div class="row"><span>02</span><span>Book a viewing with the listing agent</span></div>
       <div class="row"><span>03</span><span>Pay the booking fee in USD or BTC to confirm</span></div>
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Verified buyer reviews</span>
+        <h2>What people say after moving in</h2>
+      </div>
+      <a class="text-link" href="reviews.html">Read all reviews →</a>
+    </div>
+    <div class="grid reviews-grid" id="review-teaser">
+      <div class="empty-state">Loading reviews…</div>
     </div>
   </div>
 </section>
@@ -136,13 +142,12 @@
 <script type="module" src="js/auth.js"></script>
 <script type="module">
   import { fetchListings, applyFilters, renderList } from "./js/listings.js";
+  import { fetchApprovedReviews, reviewCardHTML, ratingSummary } from "./js/reviews.js";
 
   const grid = document.getElementById("featured-grid");
   let all = [];
   try {
     all = await fetchListings();
-    document.getElementById("stat-listings").textContent = all.length;
-    document.getElementById("stat-cities").textContent = new Set(all.map(l => (l.location||"").split(",").pop().trim())).size || "—";
     renderList(grid, all.slice(0, 6));
   } catch (e) {
     grid.innerHTML = `<div class="empty-state">Listings will appear here once your Firebase project is connected.</div>`;
@@ -155,15 +160,28 @@
     <div class="agent-card"><div class="photo"><img src="https://placehold.co/200x200/D9CDB2/14171C?text=C" alt=""></div><h3>Populate Firestore</h3><span class="role">Lettings team</span></div>
   `;
 
+  const reviewTeaser = document.getElementById("review-teaser");
+  try {
+    const reviews = await fetchApprovedReviews();
+    const summary = ratingSummary(reviews);
+    document.getElementById("hero-stars").textContent = "★".repeat(Math.round(summary.avg)) + "☆".repeat(5 - Math.round(summary.avg));
+    document.getElementById("hero-rating-summary").textContent = summary.count
+      ? `${summary.avg.toFixed(1)} from ${summary.count} verified buyer${summary.count === 1 ? "" : "s"}`
+      : "Rated by verified buyers";
+    reviewTeaser.innerHTML = reviews.length
+      ? reviews.slice(0, 3).map(reviewCardHTML).join("")
+      : `<div class="empty-state">Reviews will appear here once buyers start leaving them.</div>`;
+  } catch {
+    reviewTeaser.innerHTML = `<div class="empty-state">Reviews will appear here once your Firebase project is connected.</div>`;
+  }
+
   document.getElementById("hero-search").addEventListener("submit", (e) => {
     e.preventDefault();
     const q = document.getElementById("q").value;
     const type = document.getElementById("type").value;
-    const beds = document.getElementById("beds").value;
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (type !== "all") params.set("type", type);
-    if (beds) params.set("beds", beds);
     location.href = "listings.html?" + params.toString();
   });
 </script>

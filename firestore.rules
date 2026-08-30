@@ -26,6 +26,16 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // Reviews — public can read only published (approved) ones; admins can
+    // read everything (including unpublished/demo), and only admins can
+    // approve, reply to, or delete a review. Signed-in buyers may create
+    // their own review (held unpublished until an admin approves it).
+    match /reviews/{id} {
+      allow read: if isAdmin() || resource.data.approved == true;
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
     // Bookings are written only by the server (Admin SDK via webhook),
     // never directly from client code — so no client write rule exists.
     match /bookings/{id} {

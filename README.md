@@ -21,7 +21,7 @@ firestore.rules      → Firestore security rules
 3. Enable **Firestore Database**.
 4. Copy your web app config into `js/firebase-config.js` **and** `admin/js/firebase-config.js` (both need it — they're separate deployments).
 5. Deploy `firestore.rules` (Firestore → Rules tab, or `firebase deploy --only firestore:rules`).
-6. Firestore collections used: `listings`, `agents`, `users`, `enquiries`, `bookings`, `admins`.
+6. Firestore collections used: `listings`, `agents`, `users`, `enquiries`, `bookings`, `admins`, `reviews`.
 7. To grant someone admin-panel access: create a user via Authentication, then add a document at `admins/{their-uid}` (any field, e.g. `{ name: "Victor" }`).
 
 ## 2. Cloudinary (property & agent photos)
@@ -58,3 +58,22 @@ PUBLIC_BASE_URL=https://yourdomain.com
 
 Nothing renders on the public site until Firestore has real documents — add
 a few listings and agents from the admin panel first.
+
+## 6. Reviews
+
+The public site reads from a `reviews` collection (star rating, review text,
+an optional admin reply) shown on the homepage and on `/reviews.html`.
+Real reviews should come from a "leave a review" flow tied to a signed-in
+buyer's completed booking — that submission form isn't built yet, so for now
+reviews are written manually from the admin panel's **Reviews** tab (useful
+for transcribing feedback you collect by phone/WhatsApp/email).
+
+The Reviews tab also has a **"Seed 6 preview reviews (demo only)"** button.
+It's there purely so you can check spacing, star ratings, and the admin-reply
+thread with realistic-length content before real reviews exist. Every entry
+it creates is tagged `demo: true` and shown with a red **DEMO** badge in the
+admin table.
+
+**Before going live: delete every demo-tagged review from the Reviews tab.**
+Publishing invented reviews as if they're from real customers isn't
+something to launch with — the seeder exists for layout preview only.
