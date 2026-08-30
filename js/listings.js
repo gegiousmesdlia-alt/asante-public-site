@@ -1,6 +1,7 @@
 import { db } from "./firebase-config.js";
 import { collection, getDocs, doc, getDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { formatUSD, plotCode } from "./main.js";
+import { plotCode } from "./main.js";
+import { priceHTML } from "./pricing.js";
 
 export async function fetchListings() {
   const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt", "desc")));
@@ -12,8 +13,9 @@ export async function fetchListing(id) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
-export function cardHTML(l) {
+export function cardHTML(l, discountPercent = null) {
   const img = (l.images && l.images[0]) || "https://placehold.co/600x450/E2D8C3/14171C?text=No+Photo";
+  const suffix = l.listingType === "rent" ? "/yr" : "";
   return `
     <a class="plot-card" href="listing.html?id=${l.id}">
       <div class="thumb">
@@ -30,19 +32,19 @@ export function cardHTML(l) {
           <span>${l.sizeSqm ? l.sizeSqm + " m²" : "–"}</span>
         </div>
         <div class="plot-price">
-          <span class="amount">${formatUSD(l.price || 0)}${l.listingType === "rent" ? "/yr" : ""}</span>
+          ${priceHTML(l.price || 0, discountPercent, suffix)}
           <span class="btc">₿ accepted</span>
         </div>
       </div>
     </a>`;
 }
 
-export function renderList(el, listings) {
+export function renderList(el, listings, discountPercent = null) {
   if (!listings.length) {
     el.innerHTML = `<div class="empty-state">No listings match this search yet — try a different filter.</div>`;
     return;
   }
-  el.innerHTML = listings.map(cardHTML).join("");
+  el.innerHTML = listings.map(l => cardHTML(l, discountPercent)).join("");
 }
 
 export function applyFilters(all, { type, location, q }) {

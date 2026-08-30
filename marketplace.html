@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nationwide Listings — Asante & Grove</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Our Listings</a>
+      <a href="marketplace.html" class="active">Nationwide Search</a>
+      <a href="agents.html">Agents</a>
+      <a href="reviews.html">Reviews</a>
+      <a href="contact.html">Contact</a>
+      <span id="auth-slot" style="display:contents"></span>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<section style="padding-bottom:0;">
+  <div class="wrap">
+    <span class="eyebrow">Live nationwide search</span>
+    <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-top:10px;">Beyond our own listings</h1>
+    <p style="color:var(--ink-soft); max-width:56ch; margin-top:14px;">
+      These results are pulled live from Realtor.com, Redfin, and Apartments.com — not our own inventory.
+      See something you like? Our agents can look into it for you; nothing here books or pays through this site.
+    </p>
+
+    <form class="search-bar" id="mkt-search" style="margin-top:28px; grid-template-columns: 1.4fr 140px 140px 140px auto;">
+      <input type="text" id="mkt-location" placeholder="City, e.g. Austin, TX" required>
+      <select id="mkt-type">
+        <option value="sale">For sale</option>
+        <option value="rent">For rent</option>
+      </select>
+      <input type="number" id="mkt-min" placeholder="Min $">
+      <input type="number" id="mkt-max" placeholder="Max $">
+      <button type="submit">Search</button>
+    </form>
+    <p id="mkt-status" style="font-family:var(--font-mono); font-size:0.8rem; color:var(--ink-soft); margin-top:10px;"></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="grid" id="mkt-grid">
+      <div class="empty-state">Enter a city above to search live listings.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-bottom">
+    <span>© <span data-year></span> Asante &amp; Grove Real Estate</span>
+    <span>Listings data via Realtor.com, Redfin &amp; Apartments.com</span>
+  </div>
+</footer>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/main.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module">
+  import { fetchExternalListings, renderExternalListings, startAutoRefresh } from "./js/external-listings.js";
+  import { showToast } from "./js/main.js";
+  import { fetchDiscountPercent } from "./js/pricing.js";
+  import { fetchVisitorLocation, locationLabel } from "./js/geo.js";
+
+  const grid = document.getElementById("mkt-grid");
+  const statusEl = document.getElementById("mkt-status");
+  let stopRefresh = null;
+  let discountPercent = null;
+
+  function currentFilters() {
+    return {
+      location: document.getElementById("mkt-location").value.trim(),
+      type: document.getElementById("mkt-type").value,
+      minPrice: document.getElementById("mkt-min").value,
+      maxPrice: document.getElementById("mkt-max").value
+    };
+  }
+
+  function setStatus(data) {
+    const time = new Date(data.fetchedAt).toLocaleTimeString();
+    statusEl.textContent = `${data.listings.length} results · updated ${time} · refreshes automatically every 3 minutes`;
+    if (data.errors?.length) {
+      console.warn("Some providers failed:", data.errors);
+    }
+  }
+
+  async function runSearch() {
+    const filters = currentFilters();
+    if (!filters.location) { showToast("Enter a city first."); return; }
+    grid.innerHTML = `<div class="empty-state">Searching live listings…</div>`;
+    if (stopRefresh) stopRefresh();
+
+    try {
+      if (discountPercent === null) discountPercent = await fetchDiscountPercent();
+      const data = await fetchExternalListings(filters);
+      renderExternalListings(grid, data.listings, discountPercent);
+      setStatus(data);
+      stopRefresh = startAutoRefresh(currentFilters, (fresh) => {
+        renderExternalListings(grid, fresh.listings, discountPercent);
+        setStatus(fresh);
+      });
+    } catch (e) {
+      console.error(e);
+      grid.innerHTML = `<div class="empty-state">Could not load live listings right now — this needs the /api/external-listings function deployed with a REALTYAPI_KEY set.</div>`;
+    }
+  }
+
+  document.getElementById("mkt-search").addEventListener("submit", (e) => {
+    e.preventDefault();
+    runSearch();
+  });
+
+  // Prefill from the visitor's approximate location and auto-run the first
+  // search, so results show up without them having to type a city first.
+  // They can still overwrite the field and search a different city anytime.
+  const geo = await fetchVisitorLocation();
+  if (geo?.city) {
+    document.getElementById("mkt-location").value = locationLabel(geo);
+    runSearch();
+  }
+</script>
+</body>
+</html>

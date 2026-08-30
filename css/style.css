@@ -264,6 +264,11 @@ section{ padding: 64px 0; }
   background: var(--ink); color: var(--paper); padding: 5px 10px;
 }
 .plot-tag.rent{ background: var(--slate); }
+.source-tag{
+  position:absolute; top:12px; right:12px;
+  font-family: var(--font-mono); font-size: 0.66rem; text-transform:uppercase; letter-spacing:0.05em;
+  background: rgba(255,255,255,0.92); color: var(--ink); padding: 4px 9px; border: 1px solid var(--line);
+}
 .plot-body{ padding: 18px 18px 20px; display:flex; flex-direction:column; gap: 10px; flex:1; }
 .plot-code{ font-family: var(--font-mono); font-size: 0.72rem; color: var(--brass-deep); letter-spacing: 0.08em; }
 .plot-card h3{ text-transform:none; font-weight:600; font-family: var(--font-body); font-size: 1.08rem; letter-spacing:0; }
@@ -275,6 +280,20 @@ section{ padding: 64px 0; }
 }
 .plot-price .amount{ font-family: var(--font-mono); font-weight:500; font-size: 1.05rem; }
 .plot-price .btc{ font-size: 0.7rem; color: var(--brass-deep); }
+.price-group{ display:flex; flex-direction:column; gap: 3px; }
+.price-was{ font-family: var(--font-mono); font-size: 0.82rem; color: var(--ink-soft); text-decoration: line-through; }
+.discount-badge{
+  align-self:flex-start; font-family: var(--font-mono); font-size: 0.68rem; text-transform:uppercase; letter-spacing:0.04em;
+  background: var(--rust); color: #fff; padding: 2px 8px;
+}
+.savings-note{
+  font-family: var(--font-mono); font-size: 0.76rem; color: var(--brass-deep); margin: 10px 0 0;
+}
+.listed-price-label{ font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-soft); text-decoration: line-through; }
+.rebate-tag{
+  display:inline-block; font-family: var(--font-mono); font-size: 0.62rem; text-transform:uppercase; letter-spacing:0.04em;
+  color: var(--brass-deep); font-weight:400; margin-left: 6px;
+}
 
 /* --------------------------------- buttons -------------------------------- */
 .btn{

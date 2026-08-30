@@ -14,6 +14,7 @@
     <nav class="nav-links">
       <a href="index.html">Home</a>
       <a href="listings.html">Listings</a>
+      <a href="marketplace.html">Nationwide Search</a>
       <a href="agents.html">Agents</a>
       <a href="reviews.html">Reviews</a>
       <a href="contact.html">Contact</a>
@@ -53,6 +54,7 @@
   import { createBtcPayment, pollBtcPayment } from "./js/payment-btc.js";
   import { formatUSD, plotCode, showToast } from "./js/main.js";
   import { auth } from "./js/firebase-config.js";
+  import { fetchDiscountPercent, priceHTML } from "./js/pricing.js";
 
   const id = new URLSearchParams(location.search).get("id");
   const root = document.getElementById("listing-root");
@@ -63,6 +65,7 @@
     try {
       const l = await fetchListing(id);
       if (!l) throw new Error("not found");
+      const discountPercent = await fetchDiscountPercent();
       document.getElementById("page-title").textContent = `${l.title} — Asante & Grove`;
       const imgs = l.images && l.images.length ? l.images : ["https://placehold.co/900x600/E2D8C3/14171C?text=No+Photo"];
       root.innerHTML = `
@@ -98,7 +101,7 @@
             <div>
               <div class="form-card" style="max-width:none;">
                 <div class="plot-price" style="border:none; padding:0;">
-                  <span class="amount" style="font-size:1.5rem;">${formatUSD(l.price || 0)}${l.listingType === "rent" ? "/yr" : ""}</span>
+                  ${priceHTML(l.price || 0, discountPercent, l.listingType === "rent" ? "/yr" : "")}
                   <span class="btc">₿ accepted</span>
                 </div>
                 <p style="color:var(--ink-soft); font-size:0.88rem; margin-top:10px;">Agent: ${l.agentName || "Assigned on booking"}</p>

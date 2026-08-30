@@ -14,6 +14,7 @@
     <nav class="nav-links">
       <a href="index.html">Home</a>
       <a href="listings.html">Listings</a>
+      <a href="marketplace.html">Nationwide Search</a>
       <a href="agents.html">Agents</a>
       <a href="reviews.html">Reviews</a>
       <a href="contact.html">Contact</a>
@@ -66,19 +67,22 @@
 <script type="module" src="js/auth.js"></script>
 <script type="module">
   import { fetchListings, applyFilters, renderList } from "./js/listings.js";
+  import { fetchDiscountPercent } from "./js/pricing.js";
 
   const grid = document.getElementById("listings-grid");
   const params = new URLSearchParams(location.search);
   let all = [];
+  let discountPercent = null;
   let state = { type: params.get("type") || "all", location: "all", q: params.get("q") || "" };
 
   function apply() {
-    renderList(grid, applyFilters(all, state));
+    renderList(grid, applyFilters(all, state), discountPercent);
     document.querySelectorAll("#quick-filters .chip").forEach(c => c.classList.toggle("active", c.dataset.type === state.type));
   }
 
   try {
     all = await fetchListings();
+    discountPercent = await fetchDiscountPercent();
     const locSelect = document.getElementById("location");
     [...new Set(all.map(l => l.location).filter(Boolean))].forEach(loc => {
       const opt = document.createElement("option");

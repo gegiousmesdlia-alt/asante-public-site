@@ -1,0 +1,9 @@
+{
+  "name": "asante-grove-public-site",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Public site + Vercel serverless functions for Asante & Grove.",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

@@ -15,6 +15,7 @@
     <nav class="nav-links" id="auth-slot-wrap">
       <a href="index.html">Home</a>
       <a href="listings.html">Listings</a>
+      <a href="marketplace.html">Nationwide Search</a>
       <a href="agents.html">Agents</a>
       <a href="reviews.html">Reviews</a>
       <a href="contact.html">Contact</a>
@@ -54,8 +55,8 @@
   <div class="wrap">
     <div class="section-head">
       <div>
-        <span class="eyebrow">Featured plots</span>
-        <h2>Currently on the market</h2>
+        <span class="eyebrow" id="featured-eyebrow">Featured plots</span>
+        <h2 id="featured-heading">Currently on the market</h2>
       </div>
       <a class="text-link" href="listings.html">View full registry →</a>
     </div>
@@ -143,12 +144,30 @@
 <script type="module">
   import { fetchListings, applyFilters, renderList } from "./js/listings.js";
   import { fetchApprovedReviews, reviewCardHTML, ratingSummary } from "./js/reviews.js";
+  import { fetchDiscountPercent } from "./js/pricing.js";
+  import { fetchVisitorLocation, locationLabel } from "./js/geo.js";
 
   const grid = document.getElementById("featured-grid");
   let all = [];
   try {
     all = await fetchListings();
-    renderList(grid, all.slice(0, 6));
+    const discountPercent = await fetchDiscountPercent();
+
+    // Match listings to the visitor's approximate location when we can —
+    // falls back to the normal recent-listings order if nothing matches or
+    // location can't be detected (e.g. running locally, off Vercel).
+    const geo = await fetchVisitorLocation();
+    let featured = all;
+    if (geo?.city) {
+      document.getElementById("q").value = locationLabel(geo);
+      const nearby = all.filter(l => (l.location || "").toLowerCase().includes(geo.city.toLowerCase()));
+      if (nearby.length) {
+        featured = nearby;
+        document.getElementById("featured-eyebrow").textContent = "Near you";
+        document.getElementById("featured-heading").textContent = `Homes in ${locationLabel(geo)}`;
+      }
+    }
+    renderList(grid, featured.slice(0, 6), discountPercent);
   } catch (e) {
     console.error("Listings section error:", e);
     grid.innerHTML = `<div class="empty-state">Listings will appear here once your Firebase project is connected.</div>`;
