@@ -34,7 +34,7 @@
     </p>
 
     <form class="search-bar" id="mkt-search" style="margin-top:28px; grid-template-columns: 1.4fr 140px 140px 140px auto;">
-      <input type="text" id="mkt-location" placeholder="City, e.g. Austin, TX" required>
+      <input type="text" id="mkt-location" placeholder="City, ZIP code, or town — pick a suggestion" autocomplete="off" required>
       <select id="mkt-type">
         <option value="sale">For sale</option>
         <option value="rent">For rent</option>
@@ -70,15 +70,21 @@
   import { showToast } from "./js/main.js";
   import { fetchDiscountPercent } from "./js/pricing.js";
   import { fetchVisitorLocation, locationLabel } from "./js/geo.js";
+  import { attachLocationAutocomplete } from "./js/location-autocomplete.js";
 
   const grid = document.getElementById("mkt-grid");
   const statusEl = document.getElementById("mkt-status");
+  const locationInput = document.getElementById("mkt-location");
   let stopRefresh = null;
   let discountPercent = null;
 
+  const autocomplete = attachLocationAutocomplete(locationInput, {
+    getType: () => document.getElementById("mkt-type").value
+  });
+
   function currentFilters() {
     return {
-      location: document.getElementById("mkt-location").value.trim(),
+      location: locationInput.value.trim(),
       type: document.getElementById("mkt-type").value,
       minPrice: document.getElementById("mkt-min").value,
       maxPrice: document.getElementById("mkt-max").value
@@ -95,7 +101,7 @@
 
   async function runSearch() {
     const filters = currentFilters();
-    if (!filters.location) { showToast("Enter a city first."); return; }
+    if (!filters.location) { showToast("Enter a city, ZIP, or town first."); return; }
     grid.innerHTML = `<div class="empty-state">Searching live listings…</div>`;
     if (stopRefresh) stopRefresh();
 
@@ -116,15 +122,23 @@
 
   document.getElementById("mkt-search").addEventListener("submit", (e) => {
     e.preventDefault();
+    // Require an actual picked suggestion rather than free-typed text, so
+    // the search runs against a place RealtyAPI has confirmed exists —
+    // "Austn" won't silently search as if it were "Austin".
+    if (!autocomplete.getSelected() && locationInput.value.trim()) {
+      showToast("Please pick a suggested location from the dropdown.");
+      locationInput.focus();
+      return;
+    }
     runSearch();
   });
 
   // Prefill from the visitor's approximate location and auto-run the first
-  // search, so results show up without them having to type a city first.
-  // They can still overwrite the field and search a different city anytime.
+  // search — this comes from Vercel's own geolocation, not free-typed user
+  // text, so it's trusted enough to skip the pick-a-suggestion requirement.
   const geo = await fetchVisitorLocation();
   if (geo?.city) {
-    document.getElementById("mkt-location").value = locationLabel(geo);
+    locationInput.value = locationLabel(geo);
     runSearch();
   }
 </script>

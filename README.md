@@ -162,3 +162,22 @@ admin table.
 **Before going live: delete every demo-tagged review from the Reviews tab.**
 Publishing invented reviews as if they're from real customers isn't
 something to launch with — the seeder exists for layout preview only.
+
+## 10. Address / ZIP / town autocomplete
+
+The marketplace page's location field now shows live suggestions as you
+type — cities, ZIP codes, neighborhoods, addresses — pulled from each
+provider's own search-box typeahead (`api/location-suggest.js`, using the
+same admin-saved RealtyAPI key). **The search only runs once a suggestion
+is actually clicked or selected with the keyboard** — typing "Austn" and
+hitting Search without picking anything shows a prompt to pick a suggestion
+instead of silently searching on the unmatched text.
+
+The one auto-detected exception is the IP-based city prefill (section 8
+above) — that comes from Vercel's own geolocation, not free-typed user
+input, so it skips the pick-a-suggestion requirement and searches directly.
+
+Endpoint paths per provider (`/parser/suggest` for Realtor, `/autocomplete`
+for Apartments.com and Redfin) were confirmed from RealtyAPI's docs at the
+time this was built — verify against `https://<provider>.realtyapi.io/openapi.json`
+if suggestions ever come back empty, since provider endpoints do shift.

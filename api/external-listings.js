@@ -18,18 +18,7 @@
 // current params for each provider at https://<provider>.realtyapi.io/openapi.json
 // or in the interactive playground at https://realtyapi.io/dashboard before
 // launch, and adjust the `params` blocks below if anything's shifted.
-import { getIntegrationSetting } from "../lib/firebase-admin.js";
-
-const PROVIDERS = {
-  sale: [
-    { name: "realtor", base: "https://realtor.realtyapi.io" },
-    { name: "redfin", base: "https://redfin.realtyapi.io" }
-  ],
-  rent: [
-    { name: "apartments", base: "https://apartments.realtyapi.io" },
-    { name: "redfin", base: "https://redfin.realtyapi.io" }
-  ]
-};
+import { PROVIDERS, resolveApiKey } from "../lib/realty.js";
 
 // Very light in-memory cache to avoid burning API credits on every single
 // visitor's auto-refresh — shared only within a warm serverless instance,
@@ -51,9 +40,9 @@ function normalize(raw, source, listingType) {
       state: node.address?.state_code || node.address?.state || node.state || "",
       price: node.price || node.list_price || node.rent?.min || node.rentMin || null,
       priceMax: node.rent?.max || node.rentMax || null,
-      beds: node.beds ?? node.bedrooms ?? null,
-      baths: node.baths ?? node.bathrooms ?? null,
-      sqft: node.sqft || node.building_size?.size || null,
+      beds: node.beds ?? node.bedrooms ?? node.details?.beds ?? null,
+      baths: node.baths ?? node.bathrooms ?? node.details?.baths ?? null,
+      sqft: node.sqft || node.building_size?.size || node.details?.sqft || null,
       image: node.photos?.[0]?.href || node.primary_photo?.href || node.photo || null
     };
   });
@@ -73,14 +62,7 @@ async function fetchProvider(provider, params, listingType, apiKey) {
 
 // Cache the resolved key itself briefly too, so a burst of requests doesn't
 // each trigger their own Firestore read.
-let keyCache = { value: null, at: 0 };
-async function resolveApiKey() {
-  if (process.env.REALTYAPI_KEY) return process.env.REALTYAPI_KEY;
-  if (keyCache.value && Date.now() - keyCache.at < CACHE_TTL_MS) return keyCache.value;
-  const value = await getIntegrationSetting("realtyApiKey");
-  keyCache = { value, at: Date.now() };
-  return value;
-}
+
 
 export default async function handler(req, res) {
   const { location, type = "sale", minPrice, maxPrice, beds, page = 1 } = req.query;
