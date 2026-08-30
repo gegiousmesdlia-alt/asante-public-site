@@ -69,7 +69,8 @@
     `;
 
     renderReviews(list, reviews);
-  } catch {
+  } catch (e) {
+    console.error("Reviews page error:", e);
     summaryCard.innerHTML = `<div class="row"><span>No reviews yet</span><span></span></div>`;
     list.innerHTML = `<div class="empty-state">Reviews will appear here once your Firebase project is connected and buyers start leaving them.</div>`;
   }

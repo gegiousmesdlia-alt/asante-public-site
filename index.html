@@ -150,6 +150,7 @@
     all = await fetchListings();
     renderList(grid, all.slice(0, 6));
   } catch (e) {
+    console.error("Listings section error:", e);
     grid.innerHTML = `<div class="empty-state">Listings will appear here once your Firebase project is connected.</div>`;
   }
 
@@ -171,7 +172,8 @@
     reviewTeaser.innerHTML = reviews.length
       ? reviews.slice(0, 3).map(reviewCardHTML).join("")
       : `<div class="empty-state">Reviews will appear here once buyers start leaving them.</div>`;
-  } catch {
+  } catch (e) {
+    console.error("Reviews section error:", e);
     reviewTeaser.innerHTML = `<div class="empty-state">Reviews will appear here once your Firebase project is connected.</div>`;
   }
 

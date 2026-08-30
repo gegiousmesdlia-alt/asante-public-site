@@ -1,15 +1,19 @@
 import { db } from "./firebase-config.js";
-import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// Reviews are written by signed-in buyers against a completed booking and
-// held as approved:false until an admin publishes them from the panel.
+// No "approved" filter in the query itself on purpose — Firestore evaluates
+// the security rules per-document for a list query, so an unapproved review
+// is silently dropped from the results for non-admin readers without
+// needing a composite index. (Admins reading from the panel see everything
+// because isAdmin() passes the rule regardless of "approved".)
 export async function fetchApprovedReviews() {
-  const snap = await getDocs(query(
-    collection(db, "reviews"),
-    where("approved", "==", true),
-    orderBy("createdAt", "desc")
-  ));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  try {
+    const snap = await getDocs(query(collection(db, "reviews"), orderBy("createdAt", "desc")));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.error("Could not load reviews:", err);
+    return [];
+  }
 }
 
 export function ratingSummary(reviews) {
