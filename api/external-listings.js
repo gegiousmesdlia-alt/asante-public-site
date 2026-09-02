@@ -28,9 +28,16 @@ const cache = new Map();
 const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes — matches the client's auto-refresh interval
 
 function normalize(raw, source, listingType) {
-  const listings = raw?.listings || raw?.results || raw?.search_results?.listings || raw?.properties || [];
+  // Confirmed live for realtor.realtyapi.io /search/bylocation: the array
+  // is under "searchResults" (camelCase, not nested), photos are plain URL
+  // strings (not {href} objects), and primary_photo is a plain URL string
+  // too. Other providers haven't been confirmed the same way yet — the
+  // fallback keys below cover the previously-assumed shapes just in case
+  // Redfin/Apartments differ.
+  const listings = raw?.searchResults || raw?.listings || raw?.results || raw?.search_results?.listings || raw?.properties || [];
   return listings.map((item) => {
     const node = item.node || item;
+    const firstPhoto = Array.isArray(node.photos) ? node.photos[0] : null;
     return {
       id: `${source}-${node.id || node.property_id || node.listingKey || node.listing_id || Math.random().toString(36).slice(2)}`,
       source,
@@ -43,7 +50,7 @@ function normalize(raw, source, listingType) {
       beds: node.beds ?? node.bedrooms ?? node.details?.beds ?? null,
       baths: node.baths ?? node.bathrooms ?? node.details?.baths ?? null,
       sqft: node.sqft || node.building_size?.size || node.details?.sqft || null,
-      image: node.photos?.[0]?.href || node.primary_photo?.href || node.photo || null
+      image: node.primary_photo || (typeof firstPhoto === "string" ? firstPhoto : firstPhoto?.href) || node.photo || null
     };
   });
 }
@@ -92,12 +99,25 @@ export default async function handler(req, res) {
   }
 
   const providers = PROVIDERS[listingType];
+
+  // Confirmed live for realtor.realtyapi.io /search/bylocation: price and
+  // beds filters are ONE combined param each, formatted "min:X,max:Y" (or
+  // just "min:X" / "max:Y" alone) — not separate price_min/price_max
+  // params like earlier code assumed. Not yet confirmed the same way for
+  // Redfin/Apartments; if their filters don't apply, check their PARAMS
+  // tab in the dashboard playground the same way.
+  function buildRange(min, max) {
+    const parts = [];
+    if (min) parts.push(`min:${min}`);
+    if (max) parts.push(`max:${max}`);
+    return parts.length ? parts.join(",") : undefined;
+  }
+
   const params = {
     location,
-    price_min: minPrice,
-    price_max: maxPrice,
-    beds_min: beds,
-    page
+    page,
+    priceRange: buildRange(minPrice, maxPrice),
+    bedsRange: beds ? `min:${beds}` : undefined
   };
 
   const results = await Promise.allSettled(providers.map(p => fetchProvider(p, params, listingType, apiKey)));
