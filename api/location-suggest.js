@@ -4,7 +4,7 @@
 // address suggestions) so the RealtyAPI key stays server-side, same as
 // api/external-listings.js. Queries whichever provider(s) apply to the
 // given listing type and merges the results, deduping obvious repeats.
-import { PROVIDERS, SUGGEST_ENDPOINTS, resolveApiKey } from "../lib/realty.js";
+import { PROVIDERS, SUGGEST_ENDPOINTS, resolveApiKey, fetchWithTimeout } from "../lib/realty.js";
 
 async function suggestFromProvider(provider, q, apiKey) {
   const endpoint = SUGGEST_ENDPOINTS[provider.name];
@@ -13,7 +13,7 @@ async function suggestFromProvider(provider, q, apiKey) {
   const url = new URL(provider.base + endpoint.path);
   url.searchParams.set(endpoint.param, q);
 
-  const res = await fetch(url.toString(), { headers: { "x-realtyapi-key": apiKey } });
+  const res = await fetchWithTimeout(url.toString(), { headers: { "x-realtyapi-key": apiKey } });
   if (!res.ok) throw new Error(`${provider.name} suggest responded ${res.status}`);
   const data = await res.json();
 

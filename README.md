@@ -185,3 +185,19 @@ Endpoint paths per provider (`/parser/suggest` for Realtor, `/autocomplete`
 for Apartments.com and Redfin) were confirmed from RealtyAPI's docs at the
 time this was built — verify against `https://<provider>.realtyapi.io/openapi.json`
 if suggestions ever come back empty, since provider endpoints do shift.
+
+## 11. Function timeout note (Vercel free plan)
+
+Vercel's free (Hobby) plan caps serverless function execution at **10
+seconds total**, with no way to raise it without upgrading. The nationwide
+search and autocomplete functions each call 1–2 external providers, plus a
+Firestore lookup for your saved API key — on a slow or "cold" request this
+can add up. `lib/realty.js` gives each individual provider call a 7-second
+timeout, so one slow provider can't take the whole request down — whatever
+answered in time gets used, and a slower one is just skipped for that
+request rather than crashing everything.
+
+If nationwide search still times out occasionally under real traffic,
+upgrading to Vercel Pro raises this cap significantly (up to 60s by
+default, more with Fluid compute) — worth knowing if this becomes a
+recurring issue at scale.

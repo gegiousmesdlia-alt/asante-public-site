@@ -18,7 +18,7 @@
 // current params for each provider at https://<provider>.realtyapi.io/openapi.json
 // or in the interactive playground at https://realtyapi.io/dashboard before
 // launch, and adjust the `params` blocks below if anything's shifted.
-import { PROVIDERS, resolveApiKey } from "../lib/realty.js";
+import { PROVIDERS, resolveApiKey, fetchWithTimeout } from "../lib/realty.js";
 
 // Very light in-memory cache to avoid burning API credits on every single
 // visitor's auto-refresh — shared only within a warm serverless instance,
@@ -48,11 +48,19 @@ function normalize(raw, source, listingType) {
   });
 }
 
+// Vercel's Hobby (free) plan hard-caps serverless function execution at
+// 10 seconds — there's no way to raise that without upgrading the plan.
+// A slow or hanging provider can eat that whole budget and kill the
+// request with no response at all (shows as "---" status in Vercel's
+// logs, and the browser sees it as a dropped connection). The per-call
+// timeout (in lib/realty.js) means one slow provider can never block the
+// others — whatever answers in time gets used; anything slower just gets
+// skipped for that request rather than taking the whole thing down.
 async function fetchProvider(provider, params, listingType, apiKey) {
   const url = new URL(provider.base + "/search/bylocation");
   Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v); });
 
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithTimeout(url.toString(), {
     headers: { "x-realtyapi-key": apiKey }
   });
   if (!res.ok) throw new Error(`${provider.name} responded ${res.status}`);
