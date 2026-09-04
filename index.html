@@ -226,7 +226,10 @@
   // comes back empty (or location can't be detected — e.g. outside the US,
   // or running off Vercel), fall back through a short list of major US
   // cities so this section never sits empty on the homepage.
-  const FALLBACK_CITIES = ["Austin, TX", "Denver, CO", "Miami, FL", "Chicago, IL", "Charlotte, NC"];
+  // Kept short on purpose — RealtyAPI's free tier is 250 requests total,
+  // and each candidate tried here can cost 1-2 of those. Worst case (every
+  // candidate empty) is now capped at 3 tries instead of 6.
+  const FALLBACK_CITIES = ["Austin, TX", "Denver, CO"];
 
   async function loadNationwideTeaser() {
     const teaserGrid = document.getElementById("nw-teaser-grid");

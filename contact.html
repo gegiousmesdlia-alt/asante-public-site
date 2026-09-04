@@ -30,10 +30,16 @@
       <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-top:10px;">Talk to the office</h1>
       <p style="color:var(--ink-soft); margin-top:16px; max-width:44ch;">For general enquiries, partnership requests, or to list a property with us, send a note and an agent will follow up within one business day.</p>
 
-      <div class="ledger-card mt-lg">
-        <div class="row"><span>Office</span><span>Denver, CO</span></div>
+      <div class="ledger-card mt-lg" id="office-info-card">
+        <div class="row"><span>Office</span><span id="info-address">Loading…</span></div>
         <div class="row"><span>Hours</span><span>Mon–Sat, 9:00–18:00</span></div>
-        <div class="row"><span>Email</span><span>hello@asanteandgrove.example</span></div>
+        <div class="row"><span>Email</span><span id="info-email"></span></div>
+        <div class="row" id="info-phone-row" style="display:none;"><span>Phone</span><span id="info-phone"></span></div>
+      </div>
+
+      <div class="ledger-card mt-lg" id="owner-info-card" style="display:none;">
+        <div class="row"><span>Site owner</span><span id="info-owner-name"></span></div>
+        <div class="row"><span>Owner email</span><span id="info-owner-email"></span></div>
       </div>
     </div>
 
@@ -61,6 +67,21 @@
   import { db } from "./js/firebase-config.js";
   import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { showToast } from "./js/main.js";
+  import { fetchSiteInfo } from "./js/site-info.js";
+
+  fetchSiteInfo().then((info) => {
+    document.getElementById("info-address").textContent = info.officeAddress || "—";
+    document.getElementById("info-email").textContent = info.contactEmail || "—";
+    if (info.contactPhone) {
+      document.getElementById("info-phone").textContent = info.contactPhone;
+      document.getElementById("info-phone-row").style.display = "";
+    }
+    if (info.ownerName || info.ownerEmail) {
+      document.getElementById("info-owner-name").textContent = info.ownerName || "—";
+      document.getElementById("info-owner-email").textContent = info.ownerEmail || "—";
+      document.getElementById("owner-info-card").style.display = "";
+    }
+  });
 
   // Prefill from ?about=... when arriving via "Ask us about this property"
   // on the nationwide-listings section of listings.html.

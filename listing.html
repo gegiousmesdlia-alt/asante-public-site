@@ -54,6 +54,7 @@
   import { formatUSD, plotCode, showToast } from "./js/main.js";
   import { auth } from "./js/firebase-config.js";
   import { fetchDiscountPercent, priceHTML } from "./js/pricing.js";
+  import { threadIdFor, subscribeToThread, sendMessage, loadLocalThread } from "./js/messaging.js";
 
   const id = new URLSearchParams(location.search).get("id");
   const root = document.getElementById("listing-root");
@@ -122,12 +123,50 @@
                 <button class="btn outline block" id="pay-btc-btn" style="margin-top:10px;">Pay booking fee in BTC</button>
                 <p style="font-size:0.76rem; color:var(--ink-soft); margin-top:10px;">A refundable booking fee of ${formatUSD((l.bookingFeeUsd || 50))} confirms a slot with the agent. USD equivalent settled in BTC.</p>
               </div>
+
+              <div class="form-card" style="max-width:none; margin-top:20px;">
+                <h3 style="text-transform:none; font-family:var(--font-body); font-weight:600; font-size:1rem; margin:0 0 6px;">Message the agent</h3>
+                <p style="font-size:0.82rem; color:var(--ink-soft); margin:0 0 14px;">Ask a question about this specific property — separate from general site chat.</p>
+                <div id="listing-chat-messages" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:12px;"></div>
+                <form id="listing-chat-form" style="display:flex; gap:8px;">
+                  <input id="listing-chat-input" type="text" placeholder="Type a message…" style="flex:1; padding:10px 12px; border:1px solid var(--line); background:var(--parchment);">
+                  <button class="btn" type="submit" style="padding:10px 16px;">Send</button>
+                </form>
+              </div>
             </div>
           </div>
         </div>
       `;
 
       document.getElementById("fav-btn").addEventListener("click", () => toggleFavorite(l.id));
+
+      // --- Message the agent (per-listing thread, separate from general site chat) ---
+      const listingThreadId = threadIdFor("listing", l.id);
+      const chatMessagesEl = document.getElementById("listing-chat-messages");
+      function renderListingChat(messages) {
+        chatMessagesEl.innerHTML = messages.length
+          ? messages.map(m => `
+              <div style="align-self:${m.senderType === "admin" ? "flex-start" : "flex-end"}; max-width:85%; padding:8px 11px; font-size:0.85rem; background:${m.senderType === "admin" ? "var(--parchment)" : "var(--ink)"}; color:${m.senderType === "admin" ? "var(--ink)" : "#fff"};">
+                ${m.senderType === "admin" ? `<strong style="display:block; font-size:0.68rem; opacity:0.7;">Agent</strong>` : ""}
+                ${m.text}
+              </div>`).join("")
+          : `<p style="font-size:0.82rem; color:var(--ink-soft);">No messages yet — ask the agent anything about this property.</p>`;
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+      }
+      renderListingChat(loadLocalThread(listingThreadId));
+      subscribeToThread(listingThreadId, renderListingChat);
+
+      document.getElementById("listing-chat-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const input = document.getElementById("listing-chat-input");
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = "";
+        try {
+          await sendMessage({ kind: "listing", listingId: l.id, listingLabel: l.title, text });
+        } catch { showToast("Could not send — try again."); }
+      });
+
       document.getElementById("book-btn").addEventListener("click", () => {
         const name = document.getElementById("visit-name").value;
         const email = document.getElementById("visit-email").value;

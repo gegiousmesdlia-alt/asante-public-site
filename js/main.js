@@ -1,4 +1,7 @@
 // Shared UI behavior across every page.
+import { fetchSiteInfo, applyBrandInfo } from "./site-info.js";
+import { injectChatWidget } from "./chat-widget.js";
+
 document.addEventListener("DOMContentLoaded", () => {
   const toggle = document.querySelector(".nav-toggle");
   const links = document.querySelector(".nav-links");
@@ -18,6 +21,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-year]").forEach(el => {
     el.textContent = new Date().getFullYear();
   });
+
+  // Applies the admin-editable business name/tagline to the header on
+  // every page automatically — no per-page wiring needed.
+  fetchSiteInfo().then(applyBrandInfo);
+
+  // Floating "chat with us" widget on every public page. The admin panel
+  // (a separate app) is not part of this — it gets its own Messages tab.
+  injectChatWidget();
 });
 
 export function showToast(message, ms = 3200) {

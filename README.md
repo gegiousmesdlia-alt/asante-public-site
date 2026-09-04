@@ -95,12 +95,30 @@ names (`price_min`, `beds_min`, etc.) against the current spec at
 realtyapi.io/dashboard — provider APIs evolve, and the code was written
 against documentation available at the time.
 
-The results auto-refresh every 3 minutes per visitor. The serverless
-function includes a short in-memory cache to reduce API credit usage, but
-it's best-effort only (it doesn't persist across cold starts or multiple
-server regions) — for real traffic, swap in Vercel KV or Upstash Redis
-keyed by the search query, or you'll burn through your RealtyAPI plan's
-credits faster than expected.
+**Staying under the free plan's 250-request limit.** A few things are
+already tuned for this:
+
+- Results auto-refresh every **20 minutes** per visitor (not 3) — plenty
+  fresh for real estate, and a much lighter drain across many open tabs.
+- The server cache (`api/external-listings.js`) also holds each search
+  result for 20 minutes, shared across every visitor — the first person to
+  search "Austin, TX" spends a real credit; the next 50 people searching
+  the same thing in that window get the cached answer for free. It's
+  best-effort only (an in-memory cache doesn't persist across cold starts
+  or multiple server regions) — for real traffic, swap in Vercel KV or
+  Upstash Redis keyed by the search query for a cache that actually holds.
+- Clicking a result card opens a detail view built entirely from data the
+  search already returned — it never spends a second credit per click.
+- The homepage's fallback-city teaser tries at most 2 backup cities if
+  your visitor's own area comes up empty (was 5) — worst case that's a
+  handful of credits on a cold page load, not over a dozen.
+
+**If 250/month is still too tight once real traffic hits**, the fastest
+further cut is dropping to a single provider — `lib/realty.js`'s
+`PROVIDERS` list currently queries 2 providers per search (e.g. Realtor +
+Redfin for sale). Trimming that array to just `realtor` (the one with
+confirmed-correct field mappings) halves credit use per search instantly,
+at the cost of fewer results per query.
 
 ## 7. Site-wide discount & marketplace rebates
 
@@ -201,3 +219,85 @@ If nationwide search still times out occasionally under real traffic,
 upgrading to Vercel Pro raises this cap significantly (up to 60s by
 default, more with Fluid compute) — worth knowing if this becomes a
 recurring issue at scale.
+
+## 12. Persistent nationwide-listings cache
+
+Nationwide search results now stay saved **permanently** in Firestore
+(collection `listingsCache`) once fetched — a repeat search for the same
+location, filters, and page is served from that saved copy instead of
+spending another RealtyAPI credit, with no time-based expiry.
+
+**Tradeoff, on purpose:** since nothing expires automatically, results can
+go stale (a property that's since sold will still show as available).
+Admin panel → Settings → **"Reset saved nationwide listings"** wipes the
+whole cache, so the very next search for that place fetches fresh again.
+
+This is written and read only via the Firebase Admin SDK (server-side) —
+`firestore.rules` locks `listingsCache` to `allow read, write: if false`,
+since there's no reason for any client, admin included, to touch it
+directly.
+
+**One deployment detail:** the reset button lives in the admin panel, but
+the endpoint it calls (`/api/admin/reset-external-cache`) only exists on
+the **public site's** Vercel deployment — they're separate projects. Set
+`PUBLIC_SITE_BASE_URL` in `admin/js/firebase-config.js` to your real public
+site URL before this button will work.
+
+## 13. Editable site info
+
+Admin panel → Settings → **"Site info"** — business name, header tagline,
+contact email/phone, office address, and the site owner's name/email.
+Saved to `settings/site` (public read, admin-only write).
+
+What's wired up to actually use it right now:
+- **Business name + tagline**: applied to the header on every public page
+  automatically (`js/main.js` → `js/site-info.js`), no per-page changes
+  needed.
+- **Contact email/phone/address + owner name/email**: shown on
+  `contact.html`.
+
+Not yet wired to every mention of the business name/email across the
+site (e.g. footer copyright lines still say "Asante & Grove" as static
+text) — extend `js/site-info.js`'s `applyBrandInfo` pattern to other pages
+if you want full coverage later.
+
+## 14. Messaging
+
+Two kinds of conversation, both real-time (Firestore `onSnapshot`), both
+stored in one `messages` collection, distinguished by a `kind` field:
+
+- **General** — the floating chat bubble (bottom-right) on every public
+  page. Visitor asks the business anything; admin replies from the
+  Messages tab.
+- **Per-listing** — a "Message the agent" box on each listing's detail
+  page, scoped to that specific property (`kind: "listing"`, tagged with
+  `listingId`/`listingLabel`).
+
+**Guest vs. registered, and local persistence:** a signed-in user's
+messages are tied to their Firebase uid. A guest (no account) gets a
+random ID generated once and stored in `localStorage`
+(`js/guest-id.js`) — durable across visits without requiring sign-up,
+though it resets if they clear browser data. Admin panel tags every
+thread **Guest** or **Registered** so you can tell them apart at a glance.
+
+**"Extreme so they don't lose it" — what this does and doesn't cover:**
+every thread is mirrored to `localStorage` on every update
+(`js/messaging.js`), so a page refresh renders instantly from the local
+copy while the live Firestore listener catches back up, and if Firestore
+is briefly unreachable the visitor still sees their full history instead
+of a blank panel. **What this is NOT**: an offline send-queue. Sending a
+message still requires an active connection — if someone's offline when
+they hit send, that message doesn't get silently queued and retried
+later; it just fails. A true offline-first send queue is a meaningfully
+bigger build (background sync, conflict resolution) and is a reasonable
+next step if that's needed later, not something this v1 includes.
+
+**Security tradeoff worth knowing about:** `firestore.rules` allows public
+read/create on `messages`. Since guests aren't authenticated by Firebase
+Auth at all, there's no real per-user access control to write for them —
+`threadId` (which embeds a random guest ID or a signed-in uid) functions
+as an unguessable capability token rather than true authorization. This is
+an intentional MVP tradeoff, not an oversight. For stronger guarantees
+later, look at Firebase Anonymous Auth for guests (gives them a real
+`request.auth.uid` rules can check) or routing sends through a Cloud
+Function that validates more strictly.

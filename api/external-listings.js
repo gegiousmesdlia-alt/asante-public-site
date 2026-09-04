@@ -19,13 +19,37 @@
 // or in the interactive playground at https://realtyapi.io/dashboard before
 // launch, and adjust the `params` blocks below if anything's shifted.
 import { PROVIDERS, resolveApiKey, fetchWithTimeout } from "../lib/realty.js";
+import { adminDb } from "../lib/firebase-admin.js";
 
-// Very light in-memory cache to avoid burning API credits on every single
-// visitor's auto-refresh — shared only within a warm serverless instance,
-// so it's a best-effort cost control, not a guarantee. For real production
-// traffic, replace with Vercel KV / Upstash Redis keyed by the query string.
-const cache = new Map();
-const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes — matches the client's auto-refresh interval
+// Persistent cache, stored in Firestore (collection "listingsCache") via
+// the Firebase Admin SDK. Unlike a normal TTL cache, this NEVER expires on
+// its own — once a search result is saved, it stays until an admin taps
+// "Reset saved nationwide listings" in the Settings tab (which wipes the
+// whole collection via /api/admin/reset-external-cache). This is a
+// deliberate tradeoff: it maximizes RealtyAPI credit savings, at the cost
+// of results going stale until someone resets them.
+function cacheDocId(location, listingType, minPrice, maxPrice, beds, page) {
+  const raw = `${listingType}|${location.toLowerCase().trim()}|${minPrice || ""}|${maxPrice || ""}|${beds || ""}|${page}`;
+  return raw.replace(/[^a-z0-9]/gi, "_").slice(0, 300);
+}
+
+async function getPersistentCache(docId) {
+  try {
+    const snap = await adminDb().collection("listingsCache").doc(docId).get();
+    return snap.exists ? snap.data() : null;
+  } catch (err) {
+    console.error("Cache read failed:", err.message);
+    return null;
+  }
+}
+
+async function setPersistentCache(docId, body) {
+  try {
+    await adminDb().collection("listingsCache").doc(docId).set({ ...body, savedAt: new Date().toISOString() });
+  } catch (err) {
+    console.error("Cache write failed:", err.message);
+  }
+}
 
 function normalize(raw, source, listingType) {
   // Confirmed live for realtor.realtyapi.io /search/bylocation: the array
@@ -38,6 +62,12 @@ function normalize(raw, source, listingType) {
   return listings.map((item) => {
     const node = item.node || item;
     const firstPhoto = Array.isArray(node.photos) ? node.photos[0] : null;
+    // Capture everything the search response already gives us for free —
+    // this is what powers the detail view when a card is clicked, with no
+    // second API call (and no extra credit spent) needed.
+    const allPhotos = Array.isArray(node.photos)
+      ? node.photos.map(p => (typeof p === "string" ? p : p?.href)).filter(Boolean)
+      : [];
     return {
       id: `${source}-${node.id || node.property_id || node.listingKey || node.listing_id || Math.random().toString(36).slice(2)}`,
       source,
@@ -45,12 +75,18 @@ function normalize(raw, source, listingType) {
       title: node.address?.line || node.address_line || node.streetAddress || node.title || "Property",
       city: node.address?.city || node.city || "",
       state: node.address?.state_code || node.address?.state || node.state || "",
+      county: node.county || null,
       price: node.price || node.list_price || node.rent?.min || node.rentMin || null,
       priceMax: node.rent?.max || node.rentMax || null,
       beds: node.beds ?? node.bedrooms ?? node.details?.beds ?? null,
       baths: node.baths ?? node.bathrooms ?? node.details?.baths ?? null,
       sqft: node.sqft || node.building_size?.size || node.details?.sqft || null,
-      image: node.primary_photo || (typeof firstPhoto === "string" ? firstPhoto : firstPhoto?.href) || node.photo || null
+      lotSqft: node.lot_sqft || null,
+      propertyType: node.property_type || null,
+      status: node.status || null,
+      listDate: node.list_date || null,
+      image: node.primary_photo || (typeof firstPhoto === "string" ? firstPhoto : firstPhoto?.href) || node.photo || null,
+      images: allPhotos
     };
   });
 }
@@ -92,10 +128,10 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: "No RealtyAPI key configured — add one in the admin panel's Settings tab, or set REALTYAPI_KEY in Vercel." });
 
   const listingType = type === "rent" ? "rent" : "sale";
-  const cacheKey = JSON.stringify({ location, listingType, minPrice, maxPrice, beds, page });
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return res.status(200).json({ ...cached.body, cached: true });
+  const docId = cacheDocId(location, listingType, minPrice, maxPrice, beds, page);
+  const cached = await getPersistentCache(docId);
+  if (cached) {
+    return res.status(200).json({ ...cached, cached: true });
   }
 
   const providers = PROVIDERS[listingType];
@@ -130,7 +166,12 @@ export default async function handler(req, res) {
   });
 
   const body = { listings, errors, fetchedAt: new Date().toISOString() };
-  cache.set(cacheKey, { at: Date.now(), body });
+  // Only save to the persistent cache if at least one provider actually
+  // succeeded — an all-providers-failed response (e.g. a temporary outage)
+  // shouldn't get permanently cached as "0 results" until someone resets it.
+  if (listings.length > 0 || errors.length < providers.length) {
+    await setPersistentCache(docId, body);
+  }
 
   return res.status(200).json(body);
 }

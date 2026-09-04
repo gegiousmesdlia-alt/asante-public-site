@@ -64,5 +64,33 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // Editable business info (name, tagline, contact email/phone/address,
+    // owner name/email) shown across the public site — public read,
+    // admin-only write.
+    match /settings/site {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Persistent cache of nationwide (RealtyAPI) search results, written
+    // only by the server via the Firebase Admin SDK — never expires on its
+    // own, only cleared when an admin taps "Reset" (via a serverless
+    // endpoint that also uses the Admin SDK). No direct client access
+    // needed either direction, so this stays locked down.
+    match /listingsCache/{id} {
+      allow read, write: if false;
+    }
+
+    // Messages — general (visitor<->admin) and per-listing (buyer<->agent)
+    // threads. threadId embeds a random guest ID or the sender's uid, and
+    // functions as an unguessable capability token rather than true
+    // per-user access control, since guests aren't authenticated at all.
+    // This is a deliberate MVP tradeoff — see README "Messaging" section.
+    match /messages/{id} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
   }
 }
