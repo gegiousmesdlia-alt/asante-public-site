@@ -1,6 +1,6 @@
 import { db, auth } from "./firebase-config.js";
 import {
-  collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp
+  collection, addDoc, query, where, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getGuestId } from "./guest-id.js";
 
@@ -71,10 +71,17 @@ export async function sendMessage({ kind, listingId = null, listingLabel = null,
 // Subscribes to one thread in real time. Calls onUpdate(messages) on every
 // change, and mirrors the full transcript to localStorage each time.
 // Returns an unsubscribe function.
+//
+// Deliberately no orderBy here — combining where() with orderBy() on a
+// different field requires a Firestore composite index that doesn't exist
+// for this collection, and without it the query fails silently (same bug
+// class hit earlier with reviews). Sorting client-side avoids needing one.
 export function subscribeToThread(threadId, onUpdate) {
-  const q = query(collection(db, "messages"), where("threadId", "==", threadId), orderBy("createdAt", "asc"));
+  const q = query(collection(db, "messages"), where("threadId", "==", threadId));
   return onSnapshot(q, (snap) => {
-    const messages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const messages = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
     saveLocalThread(threadId, messages);
     onUpdate(messages);
   }, (err) => {

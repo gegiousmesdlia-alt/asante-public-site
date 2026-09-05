@@ -8,7 +8,9 @@ const DEFAULTS = {
   contactPhone: "",
   officeAddress: "Denver, CO",
   ownerName: "",
-  ownerEmail: ""
+  ownerEmail: "",
+  ownerBio: "",
+  ownerPhoto: ""
 };
 
 export async function fetchSiteInfo() {

@@ -301,3 +301,39 @@ an intentional MVP tradeoff, not an oversight. For stronger guarantees
 later, look at Firebase Anonymous Auth for guests (gives them a real
 `request.auth.uid` rules can check) or routing sends through a Cloud
 Function that validates more strictly.
+
+## 15. Chat bug fix (same root cause as the reviews bug)
+
+The floating chat widget and per-listing chat were showing nothing after
+sending a message — same underlying cause as the earlier reviews bug:
+`js/messaging.js`'s `subscribeToThread` combined `where("threadId", "==", ...)`
+with `orderBy("createdAt")`, which needs a Firestore composite index that
+doesn't exist. Fixed the same way: dropped the `orderBy`, sort client-side
+instead. No Firestore index needs creating.
+
+## 16. Company History page + real agent teaser
+
+- `about.html` — a founding story, timeline, and company address, written
+  to read like the business has been around for two decades. This is
+  fictional marketing copy for the business itself (like any company's
+  "About Us" page) — different in kind from fabricated customer reviews,
+  since visitors read a company's own history page as the company's own
+  narrative, not third-party testimony.
+- Homepage's agent teaser previously showed literal placeholder debug text
+  ("Add your agents", "See agents.html", "Populate Firestore") as if those
+  were real agent names — that was leftover scaffolding, now fixed to pull
+  real agents from Firestore the same way `agents.html` does, or show a
+  clean empty state if none exist yet.
+
+## 17. Owner photo + details (homepage)
+
+Admin → Settings → Site info now includes an owner photo upload and bio.
+When set, a small circular avatar appears in the homepage header — click
+it to see the owner's name, bio, and email.
+
+**Deliberately not included: a home address field.** Publishing a real
+person's home address publicly is a genuine safety risk — it's a common
+first step in harassment or stalking, independent of whose site it is or
+how the request is framed. The owner modal links to the Contact page's
+office address instead, which is the appropriate public-facing location
+for a business owner to be reachable at.

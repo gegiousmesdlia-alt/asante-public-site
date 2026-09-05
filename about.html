@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Our History — Asante & Grove</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Listings</a>
+      <a href="agents.html">Agents</a>
+      <a href="about.html" class="active">Our History</a>
+      <a href="reviews.html">Reviews</a>
+      <a href="contact.html">Contact</a>
+      <span id="auth-slot" style="display:contents"></span>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<section style="padding-bottom:0;">
+  <div class="wrap">
+    <span class="eyebrow">Our story</span>
+    <h1 style="font-size:clamp(2.2rem,4.5vw,3.6rem); margin-top:10px;">Two decades of keeping records straight.</h1>
+    <p style="color:var(--ink-soft); max-width:60ch; margin-top:16px; font-size:1.05rem;">
+      Asante & Grove didn't start as a real estate agency. It started as a filing cabinet.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap" style="max-width:760px;">
+    <p style="line-height:1.8; color:var(--ink-soft); font-size:1.02rem;">
+      In 2003, a title clerk named Adaeze Asante got tired of watching good buyers walk away from good houses over paperwork that didn't add up — a lien nobody disclosed, a survey that didn't match the deed, a seller's agent who "forgot" to mention the foundation report. She started keeping her own shadow files: properties she'd personally verified, cross-referenced against county records, clean enough to put her name on.
+    </p>
+    <p style="line-height:1.8; color:var(--ink-soft); font-size:1.02rem; margin-top:18px;">
+      Word got around. By 2006 she'd left the title office and opened a two-desk practice with a law-school classmate, Marcus Grove, who handled the contracts side. The name was supposed to be temporary. It's been on the door for twenty years.
+    </p>
+
+    <div class="ledger-card" style="margin-top:36px;">
+      <div class="row"><span>2003</span><span>Adaeze starts verifying listings independently</span></div>
+      <div class="row"><span>2006</span><span>Asante & Grove opens its first office</span></div>
+      <div class="row"><span>2011</span><span>First rental division added, alongside sales</span></div>
+      <div class="row"><span>2015</span><span>Title-verification process formalized for every listing</span></div>
+      <div class="row"><span>2019</span><span>Agent team grows past the original two desks</span></div>
+      <div class="row"><span>2024</span><span>Site relaunched with live nationwide search</span></div>
+    </div>
+
+    <h2 style="font-size:1.6rem; margin-top:48px;">What hasn't changed</h2>
+    <p style="line-height:1.8; color:var(--ink-soft); font-size:1.02rem; margin-top:14px;">
+      Every listing that carries our name has been checked against its title before it goes live — that rule is
+      older than the company's incorporation paperwork. We'd rather tell a buyer "not yet" than let them find
+      out about a problem after closing.
+    </p>
+
+    <h2 style="font-size:1.6rem; margin-top:40px;">Visit us</h2>
+    <div class="ledger-card" style="margin-top:16px;">
+      <div class="row"><span>Office</span><span id="about-address">Loading…</span></div>
+      <div class="row"><span>Founded</span><span>2006</span></div>
+      <div class="row"><span>Registry No.</span><span>0119</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-bottom">
+    <span>© <span data-year></span> Asante &amp; Grove Real Estate</span>
+    <a href="contact.html">Get in touch</a>
+  </div>
+</footer>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/main.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module">
+  import { fetchSiteInfo } from "./js/site-info.js";
+  fetchSiteInfo().then((info) => {
+    document.getElementById("about-address").textContent = info.officeAddress || "Denver, CO";
+  });
+</script>
+</body>
+</html>

@@ -303,6 +303,11 @@ section{ padding: 64px 0; }
   padding:40px 20px; overflow:auto; z-index:80;
 }
 .modal{ background: var(--paper); border:1px solid var(--line); padding:26px; max-width:640px; width:100%; }
+.owner-avatar-btn{
+  border: 1px solid var(--line); background: var(--paper); border-radius: 50%;
+  width: 40px; height: 40px; padding: 0; overflow: hidden; margin-left: 16px; cursor: pointer;
+}
+.owner-avatar-btn img{ width:100%; height:100%; object-fit:cover; }
 
 /* ------------------------------ chat widget ------------------------------ */
 #chat-widget-root{ position: fixed; bottom: 22px; right: 22px; z-index: 90; }

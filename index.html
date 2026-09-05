@@ -16,13 +16,30 @@
       <a href="index.html">Home</a>
       <a href="listings.html">Listings</a>
       <a href="agents.html">Agents</a>
+      <a href="about.html">Our History</a>
       <a href="reviews.html">Reviews</a>
       <a href="contact.html">Contact</a>
       <span id="auth-slot" style="display:contents"></span>
     </nav>
+    <button class="owner-avatar-btn" id="owner-avatar-btn" style="display:none;" aria-label="About the owner">
+      <img id="owner-avatar-img" src="" alt="Site owner">
+    </button>
     <button class="nav-toggle" aria-label="Toggle menu">☰</button>
   </div>
 </header>
+
+<div id="owner-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal" style="max-width:420px; text-align:center;">
+    <img id="owner-modal-photo" src="" alt="" style="width:96px; height:96px; border-radius:50%; object-fit:cover; margin:0 auto 16px; display:block; border:1px solid var(--line);">
+    <h3 id="owner-modal-name" style="text-transform:none; font-family:var(--font-body); font-size:1.2rem;"></h3>
+    <p id="owner-modal-bio" style="color:var(--ink-soft); font-size:0.92rem; margin-top:10px;"></p>
+    <a id="owner-modal-email" href="#" class="text-link" style="display:inline-block; margin-top:14px;"></a>
+    <p style="font-family:var(--font-mono); font-size:0.76rem; color:var(--ink-soft); margin-top:16px;">
+      Visit our office — see the <a href="contact.html" class="text-link">Contact page</a> for the address.
+    </p>
+    <button class="btn outline block" id="owner-modal-close" style="margin-top:18px;">Close</button>
+  </div>
+</div>
 
 <section class="hero hero-simple">
   <div class="wrap">
@@ -162,6 +179,8 @@
   import { fetchDiscountPercent } from "./js/pricing.js";
   import { fetchVisitorLocation, locationLabel } from "./js/geo.js";
   import { fetchExternalListings, renderExternalListings } from "./js/external-listings.js";
+  import { db } from "./js/firebase-config.js";
+  import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const grid = document.getElementById("featured-grid");
   let all = [];
@@ -190,11 +209,21 @@
   }
 
   const agentsTeaser = document.getElementById("agents-teaser");
-  agentsTeaser.innerHTML = `
-    <div class="agent-card"><div class="photo"><img src="https://placehold.co/200x200/D9CDB2/14171C?text=A" alt=""></div><h3>Add your agents</h3><span class="role">via Admin Panel</span></div>
-    <div class="agent-card"><div class="photo"><img src="https://placehold.co/200x200/D9CDB2/14171C?text=B" alt=""></div><h3>See agents.html</h3><span class="role">Sales team</span></div>
-    <div class="agent-card"><div class="photo"><img src="https://placehold.co/200x200/D9CDB2/14171C?text=C" alt=""></div><h3>Populate Firestore</h3><span class="role">Lettings team</span></div>
-  `;
+  try {
+    const agentsSnap = await getDocs(collection(db, "agents"));
+    const agentsList = agentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    agentsTeaser.innerHTML = agentsList.length
+      ? agentsList.slice(0, 3).map(a => `
+          <div class="agent-card">
+            <div class="photo"><img src="${a.photo || 'https://placehold.co/200x200/D9CDB2/14171C?text=' + (a.name?.[0] || 'A')}" alt="${a.name || ''}"></div>
+            <h3 style="text-transform:none; font-family:var(--font-body);">${a.name || 'Agent'}</h3>
+            <span class="role">${a.role || 'Agent'}</span>
+          </div>`).join("")
+      : `<div class="empty-state">Agent profiles will appear here once added — see the Agents page for the full team.</div>`;
+  } catch (e) {
+    console.error("Agents teaser error:", e);
+    agentsTeaser.innerHTML = `<div class="empty-state">Agent profiles will appear here once your Firebase project is connected.</div>`;
+  }
 
   const reviewTeaser = document.getElementById("review-teaser");
   try {
@@ -263,6 +292,37 @@
   }
 
   loadNationwideTeaser();
+
+  // Owner avatar — top corner, click opens details. We deliberately never
+  // show a home address here; see contact.html for the office location.
+  import("./js/site-info.js").then(({ fetchSiteInfo }) => {
+    fetchSiteInfo().then((info) => {
+      if (!info.ownerPhoto && !info.ownerName) return; // nothing configured yet, stay hidden
+      const btn = document.getElementById("owner-avatar-btn");
+      document.getElementById("owner-avatar-img").src = info.ownerPhoto || "https://placehold.co/96x96/D9CDB2/14171C?text=" + (info.ownerName?.[0] || "O");
+      btn.style.display = "block";
+      btn.addEventListener("click", () => {
+        document.getElementById("owner-modal-photo").src = info.ownerPhoto || "https://placehold.co/200x200/D9CDB2/14171C?text=" + (info.ownerName?.[0] || "O");
+        document.getElementById("owner-modal-name").textContent = info.ownerName || "Owner";
+        document.getElementById("owner-modal-bio").textContent = info.ownerBio || "";
+        const emailLink = document.getElementById("owner-modal-email");
+        if (info.ownerEmail) {
+          emailLink.href = `mailto:${info.ownerEmail}`;
+          emailLink.textContent = info.ownerEmail;
+          emailLink.style.display = "inline-block";
+        } else {
+          emailLink.style.display = "none";
+        }
+        document.getElementById("owner-modal-backdrop").style.display = "flex";
+      });
+    });
+  });
+  document.getElementById("owner-modal-close")?.addEventListener("click", () => {
+    document.getElementById("owner-modal-backdrop").style.display = "none";
+  });
+  document.getElementById("owner-modal-backdrop")?.addEventListener("click", (e) => {
+    if (e.target.id === "owner-modal-backdrop") e.target.style.display = "none";
+  });
 </script>
 </body>
 </html>
