@@ -4,7 +4,7 @@
 // address suggestions) so the RealtyAPI key stays server-side, same as
 // api/external-listings.js. Queries whichever provider(s) apply to the
 // given listing type and merges the results, deduping obvious repeats.
-import { PROVIDERS, SUGGEST_ENDPOINTS, resolveApiKey, fetchWithTimeout } from "../lib/realty.js";
+import { PROVIDERS, SUGGEST_ENDPOINTS, resolveActiveKey, trackUsage, fetchWithTimeout } from "../lib/realty.js";
 
 async function suggestFromProvider(provider, q, apiKey) {
   const endpoint = SUGGEST_ENDPOINTS[provider.name];
@@ -37,28 +37,36 @@ export default async function handler(req, res) {
   const { q, type = "sale" } = req.query;
   if (!q || q.trim().length < 2) return res.status(200).json({ suggestions: [] });
 
-  let apiKey;
+  let keyRecord;
   try {
-    apiKey = await resolveApiKey();
+    keyRecord = await resolveActiveKey();
   } catch (err) {
     return res.status(500).json({ error: "Could not read RealtyAPI key from Firestore", detail: err.message });
   }
-  if (!apiKey) return res.status(500).json({ error: "No RealtyAPI key configured — add one in the admin panel's Settings tab." });
+  // Every configured key is at its usage limit — autocomplete just quietly
+  // returns no suggestions rather than erroring; there's nothing a site
+  // visitor could do about it anyway, and it isn't cached the way full
+  // search results are.
+  if (!keyRecord) return res.status(200).json({ suggestions: [] });
 
   const listingType = type === "rent" ? "rent" : "sale";
   const providers = PROVIDERS[listingType];
 
-  const results = await Promise.allSettled(providers.map(p => suggestFromProvider(p, q.trim(), apiKey)));
+  const results = await Promise.allSettled(providers.map(p => suggestFromProvider(p, q.trim(), keyRecord.key)));
 
   const seen = new Set();
   const suggestions = [];
+  let successfulCalls = 0;
   results.forEach((r) => {
     if (r.status !== "fulfilled") return;
+    successfulCalls++;
     r.value.forEach((s) => {
       const key = s.label.toLowerCase();
       if (!seen.has(key)) { seen.add(key); suggestions.push(s); }
     });
   });
+
+  if (successfulCalls > 0) await trackUsage(keyRecord.id, successfulCalls);
 
   return res.status(200).json({ suggestions: suggestions.slice(0, 8) });
 }

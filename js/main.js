@@ -1,6 +1,7 @@
 // Shared UI behavior across every page.
 import { fetchSiteInfo, applyBrandInfo } from "./site-info.js";
 import { injectChatWidget } from "./chat-widget.js";
+import { detectLang, applyLang, injectLanguageSwitcher, captureEnglishDefaults } from "./i18n.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const toggle = document.querySelector(".nav-toggle");
@@ -29,6 +30,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Floating "chat with us" widget on every public page. The admin panel
   // (a separate app) is not part of this — it gets its own Messages tab.
   injectChatWidget();
+
+  // i18n: capture original English text, add the language switcher, then
+  // detect and apply the visitor's preferred language (browser setting
+  // first, IP/country as a fallback guess, manual choice always wins).
+  captureEnglishDefaults();
+  injectLanguageSwitcher();
+  detectLang().then(applyLang);
 });
 
 export function showToast(message, ms = 3200) {

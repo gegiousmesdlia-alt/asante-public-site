@@ -12,12 +12,12 @@
   <div class="wrap">
     <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
     <nav class="nav-links">
-      <a href="index.html">Home</a>
-      <a href="listings.html">Listings</a>
-      <a href="agents.html">Agents</a>
-      <a href="about.html">Our History</a>
-      <a href="reviews.html">Reviews</a>
-      <a href="contact.html">Contact</a>
+      <a href="index.html" data-i18n="nav.home">Home</a>
+      <a href="listings.html" data-i18n="nav.listings">Listings</a>
+      <a href="agents.html" data-i18n="nav.agents">Agents</a>
+      <a href="about.html" data-i18n="nav.history">Our History</a>
+      <a href="reviews.html" data-i18n="nav.reviews">Reviews</a>
+      <a href="contact.html" data-i18n="nav.contact">Contact</a>
       <span id="auth-slot" style="display:contents"></span>
     </nav>
     <button class="nav-toggle" aria-label="Toggle menu">☰</button>
@@ -56,6 +56,7 @@
   import { auth } from "./js/firebase-config.js";
   import { fetchDiscountPercent, priceHTML } from "./js/pricing.js";
   import { threadIdFor, subscribeToThread, sendMessage, loadLocalThread } from "./js/messaging.js";
+  import { applyLang } from "./js/i18n.js";
 
   const id = new URLSearchParams(location.search).get("id");
   const root = document.getElementById("listing-root");
@@ -120,13 +121,13 @@
                   <input id="visit-date" type="date">
                 </div>
 
-                <button class="btn block" id="book-btn">Book a viewing</button>
-                <button class="btn outline block" id="pay-btc-btn" style="margin-top:10px;">Pay booking fee in BTC</button>
+                <button class="btn block" id="book-btn" data-i18n="listing.book_viewing">Book a viewing</button>
+                <button class="btn outline block" id="pay-btc-btn" style="margin-top:10px;" data-i18n="listing.pay_btc">Pay booking fee in BTC</button>
                 <p style="font-size:0.76rem; color:var(--ink-soft); margin-top:10px;">A refundable booking fee of ${formatUSD((l.bookingFeeUsd || 50))} confirms a slot with the agent. USD equivalent settled in BTC.</p>
               </div>
 
               <div class="form-card" style="max-width:none; margin-top:20px;">
-                <h3 style="text-transform:none; font-family:var(--font-body); font-weight:600; font-size:1rem; margin:0 0 6px;">Message the agent</h3>
+                <h3 style="text-transform:none; font-family:var(--font-body); font-weight:600; font-size:1rem; margin:0 0 6px;" data-i18n="listing.message_agent">Message the agent</h3>
                 <p style="font-size:0.82rem; color:var(--ink-soft); margin:0 0 14px;">Ask a question about this specific property — separate from general site chat.</p>
                 <div id="listing-chat-messages" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:12px;"></div>
                 <form id="listing-chat-form" style="display:flex; gap:8px;">
@@ -138,6 +139,10 @@
           </div>
         </div>
       `;
+
+      // Re-apply the active language — this markup didn't exist yet when
+      // the page's initial translation pass ran on DOMContentLoaded.
+      applyLang(document.documentElement.lang || "en");
 
       document.getElementById("fav-btn").addEventListener("click", () => toggleFavorite(l.id));
 

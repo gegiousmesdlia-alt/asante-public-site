@@ -8,6 +8,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { showToast } from "./main.js";
+import { applyLang } from "./i18n.js";
 
 export async function signup(name, email, password, phone) {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -40,10 +41,13 @@ watchAuth(user => {
   if (user) {
     slot.innerHTML = `
       <a href="dashboard.html">${(user.displayName || "Account").split(" ")[0]}</a>
-      <a href="#" id="logout-link">Sign out</a>
+      <a href="#" id="logout-link" data-i18n="common.sign_out">Sign out</a>
     `;
     document.getElementById("logout-link")?.addEventListener("click", e => { e.preventDefault(); logout(); });
   } else {
-    slot.innerHTML = `<a href="login.html">Sign in</a><a href="signup.html" class="nav-cta">Create account</a>`;
+    slot.innerHTML = `<a href="login.html" data-i18n="common.sign_in">Sign in</a><a href="signup.html" class="nav-cta" data-i18n="common.create_account">Create account</a>`;
   }
+  // Re-apply the active language to this freshly-injected markup — it
+  // didn't exist yet when the page's initial translation pass ran.
+  applyLang(document.documentElement.lang || "en");
 });

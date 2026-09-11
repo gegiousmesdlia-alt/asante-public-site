@@ -5,20 +5,19 @@
 // others behind one consistent shape: base URL "https://<provider>.realtyapi.io",
 // auth header "x-realtyapi-key", search endpoint "/search/bylocation".
 //
-// The RealtyAPI key itself is entered by an admin through the admin panel's
+// The RealtyAPI key(s) are entered by an admin through the admin panel's
 // Settings tab and stored in Firestore (settings/integrations, admin-only
-// read/write). This function reads it server-side via the Firebase Admin
-// SDK — see lib/firebase-admin.js for the one-time setup that requires.
-// A REALTYAPI_KEY env var is checked first as a manual override/fallback,
-// so you can still hardcode it in Vercel directly if you'd rather skip the
-// admin-panel route for this particular key.
+// read/write). Multiple keys are supported with automatic failover once
+// one hits its usage limit — see lib/realty.js for the full mechanism.
+// This function reads it server-side via the Firebase Admin SDK — see
+// lib/firebase-admin.js for the one-time setup that requires.
 //
 // IMPORTANT — verify before relying on this in production: exact filter
 // param names (price/beds/etc.) can change on RealtyAPI's side. Confirm
 // current params for each provider at https://<provider>.realtyapi.io/openapi.json
 // or in the interactive playground at https://realtyapi.io/dashboard before
 // launch, and adjust the `params` blocks below if anything's shifted.
-import { PROVIDERS, resolveApiKey, fetchWithTimeout } from "../lib/realty.js";
+import { PROVIDERS, resolveActiveKey, trackUsage, fetchWithTimeout } from "../lib/realty.js";
 import { adminDb } from "../lib/firebase-admin.js";
 
 // Persistent cache, stored in Firestore (collection "listingsCache") via
@@ -119,19 +118,26 @@ export default async function handler(req, res) {
   const { location, type = "sale", minPrice, maxPrice, beds, page = 1 } = req.query;
   if (!location) return res.status(400).json({ error: "location is required" });
 
-  let apiKey;
-  try {
-    apiKey = await resolveApiKey();
-  } catch (err) {
-    return res.status(500).json({ error: "Could not read RealtyAPI key from Firestore", detail: err.message });
-  }
-  if (!apiKey) return res.status(500).json({ error: "No RealtyAPI key configured — add one in the admin panel's Settings tab, or set REALTYAPI_KEY in Vercel." });
-
   const listingType = type === "rent" ? "rent" : "sale";
   const docId = cacheDocId(location, listingType, minPrice, maxPrice, beds, page);
   const cached = await getPersistentCache(docId);
   if (cached) {
     return res.status(200).json({ ...cached, cached: true });
+  }
+
+  let keyRecord;
+  try {
+    keyRecord = await resolveActiveKey();
+  } catch (err) {
+    return res.status(500).json({ error: "Could not read RealtyAPI key from Firestore", detail: err.message });
+  }
+  if (!keyRecord) {
+    // Every configured key has hit its usage limit, and this exact search
+    // wasn't already saved above. Rather than error out, return quietly
+    // empty — the UI just shows "no results" the same as any other search
+    // with nothing found, since a hard error here would be more alarming
+    // than useful to a site visitor who has no way to act on it anyway.
+    return res.status(200).json({ listings: [], errors: [{ message: "All configured RealtyAPI keys are at their usage limit." }], fetchedAt: new Date().toISOString() });
   }
 
   const providers = PROVIDERS[listingType];
@@ -156,14 +162,19 @@ export default async function handler(req, res) {
     bedsRange: beds ? `min:${beds}` : undefined
   };
 
-  const results = await Promise.allSettled(providers.map(p => fetchProvider(p, params, listingType, apiKey)));
+  const results = await Promise.allSettled(providers.map(p => fetchProvider(p, params, listingType, keyRecord.key)));
 
   const listings = [];
   const errors = [];
+  let successfulCalls = 0;
   results.forEach((r, i) => {
-    if (r.status === "fulfilled") listings.push(...r.value);
+    if (r.status === "fulfilled") { listings.push(...r.value); successfulCalls++; }
     else errors.push({ provider: providers[i].name, message: r.reason.message });
   });
+
+  // One credit per provider call that actually succeeded — a single
+  // search can spend 2 credits (e.g. Realtor + Redfin), not 1.
+  if (successfulCalls > 0) await trackUsage(keyRecord.id, successfulCalls);
 
   const body = { listings, errors, fetchedAt: new Date().toISOString() };
   // Only save to the persistent cache if at least one provider actually

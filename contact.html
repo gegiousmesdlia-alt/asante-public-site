@@ -12,12 +12,12 @@
   <div class="wrap">
     <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
     <nav class="nav-links">
-      <a href="index.html">Home</a>
-      <a href="listings.html">Listings</a>
-      <a href="agents.html">Agents</a>
-      <a href="about.html">Our History</a>
-      <a href="reviews.html">Reviews</a>
-      <a href="contact.html">Contact</a>
+      <a href="index.html" data-i18n="nav.home">Home</a>
+      <a href="listings.html" data-i18n="nav.listings">Listings</a>
+      <a href="agents.html" data-i18n="nav.agents">Agents</a>
+      <a href="about.html" data-i18n="nav.history">Our History</a>
+      <a href="reviews.html" data-i18n="nav.reviews">Reviews</a>
+      <a href="contact.html" data-i18n="nav.contact">Contact</a>
       <span id="auth-slot" style="display:contents"></span>
     </nav>
     <button class="nav-toggle" aria-label="Toggle menu">☰</button>
@@ -27,15 +27,15 @@
 <section>
   <div class="wrap two-col">
     <div>
-      <span class="eyebrow">Get in touch</span>
-      <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-top:10px;">Talk to the office</h1>
+      <span class="eyebrow" data-i18n="contact.eyebrow">Get in touch</span>
+      <h1 style="font-size:clamp(2rem,4vw,3.2rem); margin-top:10px;" data-i18n="contact.heading">Talk to the office</h1>
       <p style="color:var(--ink-soft); margin-top:16px; max-width:44ch;">For general enquiries, partnership requests, or to list a property with us, send a note and an agent will follow up within one business day.</p>
 
       <div class="ledger-card mt-lg" id="office-info-card">
-        <div class="row"><span>Office</span><span id="info-address">Loading…</span></div>
-        <div class="row"><span>Hours</span><span>Mon–Sat, 9:00–18:00</span></div>
-        <div class="row"><span>Email</span><span id="info-email"></span></div>
-        <div class="row" id="info-phone-row" style="display:none;"><span>Phone</span><span id="info-phone"></span></div>
+        <div class="row"><span data-i18n="contact.office">Office</span><span id="info-address">Loading…</span></div>
+        <div class="row"><span data-i18n="contact.hours">Hours</span><span>Mon–Sat, 9:00–18:00</span></div>
+        <div class="row"><span data-i18n="common.email">Email</span><span id="info-email"></span></div>
+        <div class="row" id="info-phone-row" style="display:none;"><span data-i18n="common.phone">Phone</span><span id="info-phone"></span></div>
       </div>
 
       <div class="ledger-card mt-lg" id="owner-info-card" style="display:none;">
@@ -45,11 +45,11 @@
     </div>
 
     <form class="form-card" id="contact-form">
-      <div class="field"><label for="c-name">Full name</label><input id="c-name" required></div>
-      <div class="field"><label for="c-email">Email</label><input id="c-email" type="email" required></div>
-      <div class="field"><label for="c-phone">Phone</label><input id="c-phone"></div>
-      <div class="field"><label for="c-message">Message</label><textarea id="c-message" required></textarea></div>
-      <button class="btn block" type="submit">Send message</button>
+      <div class="field"><label for="c-name" data-i18n="common.full_name">Full name</label><input id="c-name" required></div>
+      <div class="field"><label for="c-email" data-i18n="common.email">Email</label><input id="c-email" type="email" required></div>
+      <div class="field"><label for="c-phone" data-i18n="common.phone">Phone</label><input id="c-phone"></div>
+      <div class="field"><label for="c-message" data-i18n="common.message">Message</label><textarea id="c-message" required></textarea></div>
+      <button class="btn block" type="submit" data-i18n="common.send">Send message</button>
     </form>
   </div>
 </section>

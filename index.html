@@ -13,12 +13,12 @@
   <div class="wrap">
     <a class="brand" href="index.html">Asante&nbsp;&amp;&nbsp;Grove <small>Est. Registry No. 0119</small></a>
     <nav class="nav-links" id="auth-slot-wrap">
-      <a href="index.html">Home</a>
-      <a href="listings.html">Listings</a>
-      <a href="agents.html">Agents</a>
-      <a href="about.html">Our History</a>
-      <a href="reviews.html">Reviews</a>
-      <a href="contact.html">Contact</a>
+      <a href="index.html" data-i18n="nav.home">Home</a>
+      <a href="listings.html" data-i18n="nav.listings">Listings</a>
+      <a href="agents.html" data-i18n="nav.agents">Agents</a>
+      <a href="about.html" data-i18n="nav.history">Our History</a>
+      <a href="reviews.html" data-i18n="nav.reviews">Reviews</a>
+      <a href="contact.html" data-i18n="nav.contact">Contact</a>
       <span id="auth-slot" style="display:contents"></span>
     </nav>
     <button class="owner-avatar-btn" id="owner-avatar-btn" style="display:none;" aria-label="About the owner">
@@ -44,18 +44,18 @@
 <section class="hero hero-simple">
   <div class="wrap">
     <div class="hero-simple-inner">
-      <span class="eyebrow center-eyebrow">Buy · Rent · Verified Properties</span>
-      <h1>Find a home you can trust.</h1>
-      <p class="hero-copy center-copy">Every listing is checked against its title deed before it goes live. Browse, book a viewing, and pay securely in USD or BTC.</p>
+      <span class="eyebrow center-eyebrow" data-i18n="hero.eyebrow">Buy · Rent · Verified Properties</span>
+      <h1 data-i18n="hero.heading">Find a home you can trust.</h1>
+      <p class="hero-copy center-copy" data-i18n="hero.copy">Every listing is checked against its title deed before it goes live. Browse, book a viewing, and pay securely in USD or BTC.</p>
 
       <form class="search-bar" id="hero-search">
-        <input type="text" id="q" placeholder="Search by city or neighborhood, e.g. Austin, Denver…">
+        <input type="text" id="q" data-i18n-placeholder="hero.search_placeholder" placeholder="Search by city or neighborhood, e.g. Austin, Denver…">
         <select id="type">
           <option value="all">Sale or rent</option>
           <option value="sale">For sale</option>
           <option value="rent">For rent</option>
         </select>
-        <button type="submit">Search</button>
+        <button type="submit" data-i18n="hero.search_btn">Search</button>
       </form>
 
       <a class="hero-rating-link" href="reviews.html">

@@ -1,8 +1,9 @@
 # Asante & Grove — Real Estate Website
 
 Vanilla HTML/CSS/JS, Firebase backend, Cloudinary for images, BTC payments
-via a serverless function, deployed on Vercel. The admin panel is a fully
-separate folder meant to be deployed to its own URL.
+via a serverless function, deployed on Vercel. The admin panel and the
+training tool are each fully separate folders meant to be deployed to
+their own URLs.
 
 ## Structure
 
@@ -11,6 +12,7 @@ separate folder meant to be deployed to its own URL.
 /css, /js            → shared styles and modules for the public site
 /api                 → Vercel serverless functions (BTC payment creation/status/webhook, external-listings proxy)
 /admin               → SEPARATE deploy — the staff-only backstage panel
+/training-tool       → SEPARATE deploy — seeds/clears customer-service training conversations (see section 19)
 firestore.rules      → Firestore security rules
 ```
 
@@ -337,3 +339,144 @@ first step in harassment or stalking, independent of whose site it is or
 how the request is framed. The owner modal links to the Contact page's
 office address instead, which is the appropriate public-facing location
 for a business owner to be reachable at.
+
+## 18. Language detection (i18n)
+
+A language dropdown appears in the header on every page, covering:
+**English, Spanish, Portuguese, French, German, Chinese, Arabic, Italian,
+Japanese, Russian, Hindi** — chosen as a broad, genuinely useful spread for
+an internationally-facing real estate site, not just Spanish alone.
+Arabic renders right-to-left automatically when selected.
+
+Detection order, each overriding the one before it:
+
+1. **A manual choice, once made** (stored in `localStorage`) always wins —
+   switching languages sticks across visits.
+2. **The browser's own language setting** (`navigator.language`) — the
+   actual standard signal browsers send for "preferred language," and far
+   more reliable than guessing from an IP address.
+3. **IP → country → language**, only as a last-resort guess when the
+   browser didn't already give us a supported language. Uses the existing
+   `/api/geo` endpoint (Vercel's edge geolocation) mapped through a small
+   country list in `js/i18n.js`.
+
+**What this does and doesn't cover.** Coverage now spans every page's
+header/nav, page titles and eyebrows (Listings, Agents, About, Reviews,
+Contact, Dashboard, Login, Signup), common form labels (email, password,
+full name, phone, message), the search/filter bar, and the listing detail
+page's booking and messaging buttons. The homepage hero is fully
+translated too.
+
+Still **not** translated: dynamic content — actual property listings,
+reviews, chat messages — since that comes from Firestore/RealtyAPI and
+would need either pre-translation by whoever enters it, or a paid
+translation API called per piece of content; and the long narrative
+paragraphs on `about.html` (the headings there are translated, the
+founding-story text itself is not — translating flowing prose accurately
+across 10 languages is a much bigger lift than UI strings, and wasn't
+worth doing badly).
+
+For content rendered dynamically after the page loads (the header's
+sign-in/sign-out links in `js/auth.js`, and the listing detail page's
+booking section in `listing.html`), the translation pass re-runs right
+after that content is injected — otherwise it would render in English
+regardless of the selected language, since it didn't exist yet when the
+page's initial translation pass ran on load.
+
+Extending coverage further is the same pattern throughout: tag more
+elements with `data-i18n="some.key"` (or `data-i18n-placeholder` for input
+placeholders) and add matching entries to the `TRANSLATIONS` object in
+`js/i18n.js`.
+
+**Why not the free Google Translate widget:** it was discontinued for
+commercial websites back in 2019 and is now restricted to government/
+non-profit/academic sites — using it here would risk it breaking or
+getting blocked later, so this builds a small custom system instead that
+won't get pulled out from under the site.
+
+**Adding a second language later:** add a new key (e.g. `fr`) to
+`TRANSLATIONS` in `js/i18n.js` with the same key names as `es`, add it to
+`injectLanguageSwitcher`'s button list, and optionally map more countries
+to it in `COUNTRY_TO_LANG`.
+
+## 19. Demo training conversations (customer-service testing) — separate app
+
+This is now a **third, separate deployable app** — `/training-tool` —
+not part of the admin panel. It has one job: seed or clear simulated
+customer-service training conversations. It writes into the same
+`messages` Firestore collection the admin panel's Messages tab reads, so
+seeded conversations show up there for whoever's doing the training
+exercise to reply to — this tool itself has no inbox view.
+
+**Why separate:** keeps the admin panel itself to real inbox management
+only, and lets this training utility be deployed/shared on its own
+without bundling it into the main admin codebase.
+
+**Deploying it:** same pattern as the admin panel — a static site with no
+`/api` folder, deploy `/training-tool`'s contents as their own Vercel
+project (or any static host). It reuses the same Firebase project and the
+same `admins/{uid}` whitelist for login — no new Firebase setup needed,
+just deploy the folder.
+
+Adds ~14 simulated buyer inquiries, deliberately varied — some phrased as
+a flat claim of an already-completed payment, some as pre-approved buyers
+ready to move forward, a frustrated customer, a skeptical one, terse
+one-word messages, a rapid back-to-back double-message, and a genuinely
+complex multi-part question. Meant for practicing/evaluating response
+speed and quality (e.g. before hiring customer-service staff) — not for
+production use.
+
+**Two deliberate departures from a literal "fake customer" simulation:**
+- **No fake accounts are created.** Guests don't need accounts to message
+  at all (see section 14, Messaging) — every demo conversation uses the
+  same guest-messaging path a real anonymous visitor would.
+- **No message claims a specific completed payment as fact.** A demo
+  message asserting money already changed hands is exactly the kind of
+  thing that could confuse someone later if it were ever mistaken for a
+  real pending transaction. Several conversations still include buyers
+  *claiming* they've already paid — that's realistic and good training
+  material for practicing how to verify or clarify a claim rather than
+  act on it — but nothing here should be read as this project asserting a
+  real transaction occurred.
+
+Every seeded message is tagged `demo: true` and shown with a red **DEMO**
+badge in the admin panel's Messages tab, with a warning banner while any
+demo threads exist. **"Clear demo conversations"** (in the training tool,
+not the admin panel) removes them all in one click — do this before real
+customer traffic starts using the inbox.
+
+## 20. Multiple RealtyAPI keys with automatic failover
+
+Admin panel → Settings → **"RealtyAPI.io keys"** now supports adding
+several keys instead of just one — useful since each free RealtyAPI
+account caps out at 250 requests.
+
+- **Add a key**: label + the key itself. The very first key added
+  becomes active automatically.
+- **Usage count**: goes up automatically as real searches happen (one
+  count per successful provider call — a single search can use 2, e.g.
+  Realtor + Redfin). You can also edit the number by hand at any time —
+  useful for correcting drift, or resetting a key back to 0 once its real
+  monthly quota renews on RealtyAPI's own dashboard.
+- **"Use this"**: manually switch the active key at any time.
+- **Automatic failover**: when the active key hits 250, the very next
+  request automatically switches to any other key that still has room —
+  silently, with no visible interruption to whoever's searching. You
+  don't need to do anything for this to happen.
+- **If every key is at 250**: nationwide search doesn't error out. It
+  first checks the persistent listings cache (section 12) — a lot of
+  searches are likely already saved there — and only if that specific
+  search was never cached does it fall back to showing "no results,"
+  quietly, the same as any other search that found nothing.
+
+Keys are stored in Firestore at `settings/integrations.realtyApiKeys` (a
+map keyed by a generated id, not an array — this lets usage counts update
+atomically without a read-modify-write race), with
+`settings/integrations.activeRealtyKeyId` pointing at whichever one is
+currently in use. No `firestore.rules` changes were needed for this —
+it's the same document path as the old single-key setup, already
+admin-only.
+
+A `REALTYAPI_KEY` Vercel environment variable, if set, still overrides
+all of this entirely (checked first, no usage tracking applied) — useful
+for local testing without touching the real key rotation.
