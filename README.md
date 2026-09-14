@@ -480,3 +480,47 @@ admin-only.
 A `REALTYAPI_KEY` Vercel environment variable, if set, still overrides
 all of this entirely (checked first, no usage tracking applied) — useful
 for local testing without touching the real key rotation.
+
+## 21. Sub-admins (per-tab staff access)
+
+Admin panel → **Staff** tab (owner-only — sub-admins never see this tab
+at all, and `firestore.rules` blocks them from writing to `admins/*` even
+if they tried to call Firestore directly).
+
+**Adding someone:** name, email, a temporary password, and which tabs they
+can access (Listings, Agents, Enquiries, Bookings & BTC, Reviews,
+Messages — pick any combination). This creates a real Firebase Auth login
+for them, not just a database entry. Share the email/password with that
+person directly and securely afterward — this isn't emailed automatically.
+
+**Settings and Staff management are never assignable to a sub-admin.**
+This isn't just hidden in the UI — `firestore.rules` locks `admins/*` and
+every `settings/*` document to `isOwner()` specifically, so a sub-admin
+can't reach either even by bypassing the interface entirely and calling
+Firestore straight from the browser console.
+
+**What IS enforced only at the UI level, not the database level:**
+Listings, Agents, Enquiries, Bookings, Reviews, and Messages still use the
+older `isAdmin()` rule (any admin, owner or sub-admin). Hiding a tab a
+sub-admin isn't assigned is a genuine convenience — it keeps their view
+focused and prevents accidental use — but it is **not** a hard security
+wall for those six collections specifically. A sub-admin technical enough
+to open the browser console and call Firestore directly could still write
+to a collection whose tab they were never given. If that matters for your
+situation (e.g. a sub-admin who genuinely shouldn't be able to touch
+Bookings under any circumstance), the fix is extending each of those six
+rules to check the caller's `permissions` array the same way `isOwner()`
+checks `role` — a reasonable next step, not done here to keep this
+change's footprint focused on what was actually asked for.
+
+**One-time setup for your own (first) account:** nothing to do — an
+existing admin doc with no `role` field at all is automatically treated as
+owner, both by the app and by `firestore.rules`. Every sub-admin created
+from here on always gets `role: "sub-admin"` explicitly, so that default
+never accidentally grants anyone new full access.
+
+**Removing someone:** "Remove access" deletes their `admins/{uid}`
+document, which immediately blocks them from the panel (same check every
+login already goes through). It does **not** delete their actual Firebase
+Authentication account — if you want their login gone entirely, not just
+their panel access, do that manually from Firebase Console → Authentication → Users.

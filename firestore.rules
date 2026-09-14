@@ -4,6 +4,32 @@ service cloud.firestore {
 
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    // The owner is the one admin who can manage staff and API keys/site
+    // settings. Any EXISTING admin doc with no "role" field at all is
+    // treated as an owner too — this keeps a single pre-existing admin
+    // account (from before sub-admins existed) working without a manual
+    // migration step. Every NEW admin doc this feature creates always sets
+    // role explicitly ("owner" or "sub-admin"), so that default only ever
+    // benefits a legacy account, never a newly-created sub-admin.
+    function isOwner() {
+      return isAdmin() &&
+        (!("role" in get(/databases/$(database)/documents/admins/$(request.auth.uid)).data) ||
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == "owner");
+    }
+    // NOTE on per-tab permissions: the admin panel UI hides tabs a
+    // sub-admin isn't assigned (e.g. only "Messages" + "Listings"), but
+    // the rules below for listings/agents/enquiries/bookings/reviews/
+    // messages still just check isAdmin() — ANY admin, owner or sub-admin,
+    // can write to those collections regardless of which tabs their
+    // account was assigned. Hiding a tab is a real convenience (prevents
+    // accidental use, keeps the UI focused) but is not a hard security
+    // wall for those specific collections — a sub-admin technical enough
+    // to call Firestore directly instead of clicking through the UI could
+    // still write to a collection whose tab they don't see. What IS a
+    // real security wall either way: settings/* and admins/* below require
+    // isOwner(), not just isAdmin() — a sub-admin can never touch API
+    // keys, site settings, or the staff list itself, full stop, regardless
+    // of what they try.
 
     // Public catalogue — anyone can read, only admins can write.
     match /listings/{id} {
@@ -43,34 +69,38 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Admin whitelist — never client-writable; add entries from the Firebase console.
+    // Admin whitelist. Only the owner can create, edit, or remove entries
+    // (including sub-admins) — a sub-admin can never grant themselves or
+    // anyone else more access, even by calling Firestore directly.
     match /admins/{uid} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow write: if isOwner();
     }
 
     // Third-party API keys entered through the admin panel's Settings tab
-    // (e.g. RealtyAPI). Never publicly readable — the serverless functions
-    // that actually use these keys read them via the Firebase Admin SDK,
-    // which bypasses these rules entirely, so this only governs direct
-    // client-side access (the admin panel UI itself).
+    // (e.g. RealtyAPI). Owner-only — this is exactly the kind of thing a
+    // sub-admin should never be able to touch, even by calling Firestore
+    // directly instead of using the UI (which already never shows them
+    // this tab at all). Never publicly readable either way — the
+    // serverless functions that actually use these keys read them via the
+    // Firebase Admin SDK, which bypasses these rules entirely.
     match /settings/integrations {
-      allow read, write: if isAdmin();
+      allow read, write: if isOwner();
     }
 
     // Site-wide discount percentage — public read (every visitor's browser
-    // needs it to render prices), admin-only write.
+    // needs it to render prices), owner-only write.
     match /settings/promotions {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isOwner();
     }
 
     // Editable business info (name, tagline, contact email/phone/address,
     // owner name/email) shown across the public site — public read,
-    // admin-only write.
+    // owner-only write.
     match /settings/site {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isOwner();
     }
 
     // Persistent cache of nationwide (RealtyAPI) search results, written
